@@ -1,0 +1,8 @@
+opencv-python
+numpy
+matplotlib
+scikit-image
+ipywidgets
+jupyter
+kagglehub
+python-dotenv

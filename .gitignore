@@ -1,0 +1,24 @@
+# Local claude
+.claude/settings.local.json
+
+# Sources (class materials — not versioned)
+sources/
+
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Outputs — ignore timestamped run folders, keep directory structure
+outputs/figures/*/
+outputs/results/*/
+
+# macOS
+.DS_Store

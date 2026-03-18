@@ -1,1 +1,103 @@
-# classical-cv
+# Classical Computer Vision Project
+
+Projects developed for the Computer Vision course (INE410121 / TRV410001) at UFSC,
+focusing on classical image processing techniques — no deep learning.
+
+## Topics Covered
+
+- Image preprocessing & filtering
+- Segmentation techniques
+- Feature extraction
+- Object detection via classical pipelines
+
+## Running locally
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/daviludvig/classical-cv.git
+cd classical-cv
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Kaggle credentials
+
+The dataset is downloaded automatically via `kagglehub`. To get your API token:
+
+1. Go to <https://www.kaggle.com/settings>
+2. Scroll to the **API** section
+3. Click **Create New Token**
+4. Copy the token shown (starts with `KGAT_...`)
+
+Then configure your `.env`:
+
+```bash
+cp .env.example .env
+# Open .env and replace KGAT_your_token_here with your token
+```
+
+### 5. Launch Jupyter
+
+```bash
+jupyter notebook notebooks/main.ipynb
+```
+
+The first cell calls `setup()`, which downloads the dataset on first run and caches it locally.
+
+---
+
+## Running on Google Colab
+
+Open `notebooks/main.ipynb` in Colab.
+Cell 0 of the notebook handles credentials — fill in your token there before running.
+
+---
+
+## Contributing
+
+Always work on a branch — **never commit directly to `main`**.
+
+```bash
+git checkout -b feature/my-feature   # create branch
+# ... work ...
+git push origin feature/my-feature
+# open a Pull Request to main on GitHub
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+---
+
+## Project Structure
+
+```text
+classical-cv/
+├── notebooks/
+│   └── main.ipynb          # Main project notebook
+├── src/
+│   ├── setup.py            # Environment + dataset bootstrap
+│   └── utils.py            # Shared utilities (save_fig, save_metrics, ...)
+├── outputs/
+│   ├── figures/            # Generated plots (per-run folders, not versioned)
+│   └── results/            # Experiment metrics (per-run folders, not versioned)
+├── requirements.txt
+└── .env.example            # Credentials template
+```
+
+> The dataset is downloaded automatically by `kagglehub` and cached at `~/.cache/kagglehub/`. No local `data/` folder needed.
+
+## Authors
+
+...
