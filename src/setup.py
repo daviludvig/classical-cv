@@ -16,7 +16,7 @@ from pathlib import Path
 
 REPO_URL = "https://github.com/daviludvig/classical-cv.git"
 REPO_NAME = "classical-cv"
-DATASET_SLUG = "raidathmane/corrosion-and-spalling-concrete-defect-segmentation"
+DATASET_SLUG = "jakemccaig/backyard-feeder-birds-nabirds-subset"
 
 
 def _is_colab() -> bool:
@@ -39,7 +39,6 @@ def _load_env() -> None:
     _ensure_package("dotenv")
     from dotenv import load_dotenv
 
-    # Walk up from this file's location to find the repo root .env
     env_file = Path(__file__).resolve().parent.parent / ".env"
     if env_file.exists():
         load_dotenv(env_file)
@@ -57,6 +56,7 @@ def _clone_repo(target: str = f"/content/{REPO_NAME}") -> str:
 def _download_dataset() -> str:
     _ensure_package("kagglehub")
     import kagglehub
+
     path = kagglehub.dataset_download(DATASET_SLUG)
     print(f"Dataset ready at: {path}")
     return path
@@ -68,8 +68,6 @@ def setup() -> str:
 
     Local:
         Reads KAGGLE_API_TOKEN from .env at the repo root.
-        Copy .env.example to .env and fill in your token.
-        Get your token at: https://www.kaggle.com/settings → API → Create New Token
 
     Colab:
         Clones the repo, adds it to sys.path.

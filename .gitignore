@@ -19,6 +19,7 @@ venv/
 # Outputs — ignore timestamped run folders, keep directory structure
 outputs/figures/*/
 outputs/results/*/
+outputs/exports/*
 
 # macOS
 .DS_Store

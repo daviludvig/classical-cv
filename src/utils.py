@@ -1,12 +1,11 @@
 """
-Utility functions for saving figures and images with timestamped run directories.
+Utility functions for saving figures and metrics with timestamped run directories.
 
 Usage in notebooks:
-    from src.utils import create_run_dir, save_fig
+    from src.utils import create_run_dir, save_fig, save_metrics
 
     RUN_DIR = create_run_dir()
-    # ... generate plots ...
-    save_fig("preprocessing", RUN_DIR)
+    save_fig("samples", RUN_DIR)
 """
 
 import json
@@ -22,8 +21,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 def create_run_dir(base_dir: str | Path | None = None) -> Path:
     """
     Creates a timestamped output directory under outputs/figures/.
-
-    Returns the Path to the created directory.
     """
     if base_dir is None:
         base_dir = _REPO_ROOT / "outputs" / "figures"
@@ -37,9 +34,7 @@ def create_run_dir(base_dir: str | Path | None = None) -> Path:
 
 def save_metrics(metrics: dict, run_dir: Path) -> Path:
     """
-    Saves a metrics dictionary as metrics.json inside run_dir.
-
-    Automatically adds a 'timestamp' key from the run_dir name.
+    Saves a metrics dictionary as metrics.json inside outputs/results/<timestamp>/.
     """
     results_dir = _REPO_ROOT / "outputs" / "results" / run_dir.name
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -54,9 +49,6 @@ def save_metrics(metrics: dict, run_dir: Path) -> Path:
 def save_fig(name: str, run_dir: Path, fig=None, dpi: int = 150) -> Path:
     """
     Saves a matplotlib figure to run_dir/<name>.png.
-
-    Uses the current figure (plt.gcf()) if fig is not provided.
-    Does NOT close the figure so it still renders inline in Jupyter.
     """
     if fig is None:
         fig = plt.gcf()

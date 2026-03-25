@@ -56,6 +56,18 @@ jupyter notebook notebooks/main.ipynb
 
 The first cell calls `setup()`, which downloads the dataset on first run and caches it locally.
 
+### Export notebook to PDF (without TeX)
+
+If `nbconvert --to pdf` fails due to missing `xelatex`, use:
+
+```bash
+bash scripts/export_notebook_pdf.sh notebooks/main.ipynb
+```
+
+This script exports to HTML first and then:
+- generates PDF automatically if Chrome/Chromium is available
+- otherwise leaves the HTML file in `outputs/exports/` for manual Print to PDF
+
 ---
 
 ## Running on Google Colab
