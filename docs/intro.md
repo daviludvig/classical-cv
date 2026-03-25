@@ -69,14 +69,42 @@ A figura a seguir ilustra um caso em que a estratégia baseada em bordas consegu
 
 *Figura: comparação entre imagem original, máscara binária e imagem segmentada.*
 
-4. **Extração de características**  
+#### Valores usados para gerar os resultados de segmentação
+
+Os resultados mostrados nesta documentação foram gerados com os seguintes parâmetros (conforme `notebooks/main.ipynb`). Esses dados são temporários e podem ser ajustados para explorar diferentes resultados, foram decididos com fins de teste empiricamente e não representam uma configuração otimizada.
+
+- **Pré-processamento**
+   - redimensionamento para `IMG_SIZE = (160, 160)`;
+   - conversão para tons de cinza;
+   - suavização com `GaussianBlur(gray, (5, 5), 0)`.
+
+- **Limpeza da máscara (pós-processamento comum a todos os métodos)**
+   - abertura morfológica com kernel `3 x 3`;
+   - fechamento morfológico com kernel `5 x 5`;
+   - retenção apenas da maior componente conexa (`connectivity=8`).
+
+- **Candidatos de segmentação testados**
+   - `otsu`: `THRESH_BINARY + THRESH_OTSU`;
+   - `otsu_inv`: `THRESH_BINARY_INV + THRESH_OTSU`;
+   - `adaptive`: `ADAPTIVE_THRESH_GAUSSIAN_C`, `THRESH_BINARY`, `blockSize=21`, `C=4`;
+   - `edges`: `Canny(60, 140)` + dilatação (`kernel 3 x 3`, `iterations=2`) + fechamento (`kernel 5 x 5`);
+   - `hsv_sat`: `inRange(HSV, (0, 25, 20), (179, 255, 255))`;
+   - `grabcut`: retângulo inicial com margens de `10%` em cada borda (`x=0.10w`, `y=0.10h`, `w=0.80w`, `h=0.80h`) e `5` iterações.
+
+- **Critério de escolha da melhor máscara**
+   - cálculo de `area_ratio = area_mascara / area_imagem`;
+   - bônus de score se `0.03 <= area_ratio <= 0.65`;
+   - penalização fora desse intervalo;
+   - acréscimo da fração da maior componente conexa na área total da máscara.
+
+1. **Extração de características**  
    Cálculo de atributos clássicos sobre a região segmentada:
    - histogramas de cor;
    - textura;
    - medidas geométricas e momentos de forma;
    - descritores derivados de bordas e gradientes.
 
-5. **Classificação**  
+2. **Classificação**  
    Uso de um classificador supervisionado clássico para prever a espécie do pássaro a partir do vetor de características.
 
 Esse encadeamento é coerente com a própria lógica de exemplos completos de pipeline apresentados no material da disciplina, nos quais se parte da imagem, constrói-se uma representação mais abstrata por meio de descritores e, então, aplica-se um método de reconhecimento de padrões para chegar à classificação final.
