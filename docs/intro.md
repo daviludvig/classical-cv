@@ -61,6 +61,14 @@ A solução implementada no notebook segue, em linhas gerais, a seguinte sequên
 3. **Segmentação clássica**  
    Aplicação de múltiplas estratégias, como Otsu, threshold adaptativo e etc, seguida de operações morfológicas e seleção da melhor máscara candidata.
 
+### Exemplo visual de segmentação
+
+A figura a seguir ilustra um caso em que a estratégia baseada em bordas consegue separar bem o pássaro do fundo. Esse tipo de resultado reduz a influência de regiões irrelevantes na etapa de extração de características.
+
+![Exemplo de segmentação (original, máscara e resultado segmentado)](images/segmentation_examples.png)
+
+*Figura: comparação entre imagem original, máscara binária e imagem segmentada.*
+
 4. **Extração de características**  
    Cálculo de atributos clássicos sobre a região segmentada:
    - histogramas de cor;
