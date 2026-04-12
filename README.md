@@ -3,12 +3,26 @@
 Projects developed for the Computer Vision course (INE410121 / TRV410001) at UFSC,
 focusing on classical image processing techniques — no deep learning.
 
+## Current Project: Chessboard Detection & Occupancy Analysis
+
+A classical computer vision system for understanding chessboard state from images.
+The pipeline detects the board, corrects perspective via homography, segments an 8x8 grid,
+classifies each square as occupied or empty using intensity/edge/texture features,
+and detects moves by comparing two frames.
+
+**Dataset:** [Synthetic Chess Board Images](https://www.kaggle.com/datasets/thefamousrat/synthetic-chess-board-images) (Kaggle)
+
 ## Topics Covered
 
-- Image preprocessing & filtering
-- Segmentation techniques
-- Feature extraction
-- Object detection via classical pipelines
+- Image preprocessing & filtering (grayscale, Gaussian blur)
+- Edge detection (Canny, Sobel)
+- Line detection (Hough Transform)
+- Contour detection & polygon approximation
+- Perspective correction (homography)
+- Morphological operations (opening, closing)
+- Feature extraction (intensity, edge density, texture variance)
+- Threshold-based occupancy classification
+- Temporal analysis (move detection via frame comparison)
 
 ## Running locally
 
@@ -97,10 +111,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 ```text
 classical-cv/
 ├── notebooks/
-│   └── main.ipynb          # Main project notebook
+│   └── main.ipynb          # Main project notebook (chessboard analysis)
 ├── src/
 │   ├── setup.py            # Environment + dataset bootstrap
+│   ├── chess.py             # Board detection, segmentation, occupancy, moves
 │   └── utils.py            # Shared utilities (save_fig, save_metrics, ...)
+├── docs/
+│   ├── intro.md            # Detailed project introduction & methodology
+│   └── apresentacao.md     # Presentation slides (Marp format)
 ├── outputs/
 │   ├── figures/            # Generated plots (per-run folders, not versioned)
 │   └── results/            # Experiment metrics (per-run folders, not versioned)
@@ -112,4 +130,5 @@ classical-cv/
 
 ## Authors
 
-...
+- Davi Ludvig
+- Julia Macedo

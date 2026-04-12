@@ -16,7 +16,7 @@ from pathlib import Path
 
 REPO_URL = "https://github.com/daviludvig/classical-cv.git"
 REPO_NAME = "classical-cv"
-DATASET_SLUG = "jakemccaig/backyard-feeder-birds-nabirds-subset"
+DATASET_SLUG = "thefamousrat/synthetic-chess-board-images"
 
 
 def _is_colab() -> bool:
