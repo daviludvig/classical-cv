@@ -42,3 +42,20 @@ fix/iou-calculation
 data/explore-val-split
 docs/update-readme
 ```
+
+## Setup apos clonar
+
+```bash
+# 1. Criar e ativar o ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Configurar o filtro git que limpa outputs dos notebooks
+#    (remove paths locais, tokens e outputs antes de commitar)
+git config filter.strip-notebook.clean '.venv/bin/python scripts/clean_notebook.py'
+git config filter.strip-notebook.smudge cat
+```
+
+O filtro e obrigatorio para evitar que dados pessoais (paths, tokens Kaggle)
+sejam commitados nos outputs das celulas do notebook.
