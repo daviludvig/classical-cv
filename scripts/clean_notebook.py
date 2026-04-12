@@ -19,8 +19,8 @@ def clean(nb: dict) -> dict:
     # Remove kernel / language info that contains local paths
     md = nb.get("metadata", {})
     ks = md.get("kernelspec", {})
-    ks.pop("display_name", None)
-    ks.pop("name", None)
+    ks["display_name"] = "Python 3"
+    ks["name"] = "python3"
     md.pop("language_info", None)
     return nb
 
