@@ -13,7 +13,7 @@ style: |
 
 # Analise de Tabuleiros de Xadrez
 
-## Visao computacional classica para leitura de tabuleiros, identificacao e classificacao de pecas
+## Visao computacional classica para leitura de tabuleiros, identificacao, classificacao de pecas e sugestao de jogadas.
 
 **Davi Ludvig e Julia Macedo**
 **Disciplina:** INE410121 / TRV410001 — Visao Computacional - UFSC
@@ -29,7 +29,7 @@ style: |
 
 ![w:900](images/slide_montage.jpg)
 
-Imagens sinteticas fotorrealistas (Blender Cycles, 1280x1280) com pecas e tabuleiro de **madeira** — material uniforme que cria baixo contraste, desafiando metodos classicos.
+Imagens com pecas e tabuleiro de **madeira** — material uniforme que cria baixo contraste, desafiando metodos classicos.
 
 ---
 
@@ -37,7 +37,7 @@ Imagens sinteticas fotorrealistas (Blender Cycles, 1280x1280) com pecas e tabule
 
 ![w:1100](images/slide_pipeline.jpg)
 
-Cada etapa usa exclusivamente **tecnicas classicas de CV** — sem Deep Learning.
+Cada etapa usa exclusivamente **tecnicas classicas de CV**.
 
 ---
 
@@ -46,21 +46,18 @@ Cada etapa usa exclusivamente **tecnicas classicas de CV** — sem Deep Learning
 <div class="columns">
 <div>
 
-**Dominio do valor:**
-- Conversao para tons de cinza
-- Suavizacao gaussiana (kernel 5x5)
-- Equalizacao de histograma (global e CLAHE)
+- Converter para tons de cinza
+- Reduzir ruido (suavizacao)
+- Melhorar contraste local (equalizacao)
 
-**Por que:** reduzir ruido antes da deteccao de bordas e normalizar contraste entre imagens com iluminacoes diferentes.
+**Objetivo:** preparar a imagem para que as bordas do tabuleiro fiquem mais visiveis.
 
-![h:200](images/03b_histogram_equalization.png)
+![h:200](images/03_preprocessing.png)
 
 </div>
 <div>
 
-![h:200](images/03_preprocessing.png)
-
-**CLAHE** (Contrast-Limited Adaptive Histogram Equalization) faz equalizacao local, preservando detalhes sem saturar regioes uniformes.
+![h:300](images/03b_histogram_equalization.png)
 
 </div>
 </div>
@@ -72,21 +69,14 @@ Cada etapa usa exclusivamente **tecnicas classicas de CV** — sem Deep Learning
 <div class="columns">
 <div>
 
-**4 operadores comparados:**
+Testamos **4 detectores de borda** e escolhemos o que melhor destaca as linhas do tabuleiro (Canny).
 
-| Operador | Kernel | Vantagem |
-| --- | --- | --- |
-| Roberts | 2x2 | Simples, rapido |
-| Prewitt | 3x3 | Suavizacao uniforme |
-| Sobel | 3x3 | Peso no centro |
-| **Canny** | Multi | Bordas finas + histerese |
+Depois, usamos operacoes morfologicas para **limpar ruido** e **conectar bordas** quebradas.
 
 </div>
 <div>
 
 ![h:180](images/04b_edge_operators_comparison.png)
-
-**Operacoes morfologicas** refinam o resultado:
 
 ![h:160](images/04c_morphological_operations.png)
 
@@ -95,23 +85,19 @@ Cada etapa usa exclusivamente **tecnicas classicas de CV** — sem Deep Learning
 
 ---
 
-## Etapa 3: Hough + Homografia
+## Etapa 3: Encontrar o Tabuleiro e Corrigir Perspectiva
 
 <div class="columns">
 <div>
 
-**Transformada de Hough:**
-
-Cada pixel de borda vota no espaco parametrico (rho, theta). Picos = linhas do grid.
+**Encontrar as linhas:** a partir das bordas, detectamos as linhas retas que formam o grid do tabuleiro.
 
 ![h:220](images/05_hough_lines.png)
 
 </div>
 <div>
 
-**Homografia (4 pontos):**
-
-Correcao de perspectiva — matriz 3x3 que mapeia o tabuleiro angular para visao top-down.
+**Corrigir a perspectiva:** com os 4 cantos do tabuleiro, transformamos a foto angular em uma visao de cima.
 
 ![h:220](images/07_perspective_correction.png)
 
@@ -120,38 +106,32 @@ Correcao de perspectiva — matriz 3x3 que mapeia o tabuleiro angular para visao
 
 ---
 
-## Etapa 4: Segmentacao e Features
+## Etapa 4: Dividir em Casas e Classificar
 
 <div class="columns">
 <div>
 
 ![h:250](images/slide_warped_grid.jpg)
 
-Imagem retificada 480x480 dividida em 64 celulas de 60x60 px.
+Com a visao de cima, dividimos o tabuleiro em **64 casas** iguais.
 
 </div>
 <div>
 
-**5 features classicas por celula:**
+Para cada casa, medimos **5 caracteristicas** (brilho, textura, bordas...) e perguntamos: **tem peca ou nao?**
 
-- Intensidade media (grayscale)
-- Desvio-padrao (variabilidade)
-- Densidade de bordas (Canny)
-- Variancia do Laplaciano (textura)
-- Diferenca centro-borda (presenca)
-
-**Classificador:** votacao por limiares (>=2 votos = ocupada)
+Se a maioria das medidas indica presenca, a casa e marcada como ocupada.
 
 </div>
 </div>
 
----
+<!-- --- -->
 
-## Espaco de Features
+<!-- ## Visualizacao das Caracteristicas
 
-![w:750](images/09b_feature_space.png)
+Cada ponto e uma casa. **Vermelho** = tem peca, **verde** = vazia. Quanto mais separados os grupos, melhor a caracteristica funciona.
 
-Scatter plots mostram a separacao entre celulas **ocupadas** (vermelho) e **vazias** (verde). As linhas tracejadas sao os thresholds do classificador.
+![w:700](images/09b_feature_space.png) -->
 
 ---
 
@@ -167,11 +147,11 @@ Scatter plots mostram a separacao entre celulas **ocupadas** (vermelho) e **vazi
 </div>
 <div>
 
-**Classificacao de cor (HSV Value):**
+**Classificacao de cor:**
 
 ![h:220](images/10b_piece_color_classification.png)
 
-Pecas claras (boxwood) vs escuras (ebony) diferenciadas pelo canal V do espaco HSV.
+Pecas claras vs escuras diferenciadas pelo brilho de cada casa.
 
 </div>
 </div>
@@ -180,11 +160,11 @@ Pecas claras (boxwood) vs escuras (ebony) diferenciadas pelo canal V do espaco H
 
 ## Deteccao de Jogadas
 
-**Comparacao temporal** de mapas de ocupacao entre dois frames:
+Comparando o tabuleiro **antes e depois**, identificamos qual peca se moveu:
 
 ![w:700 center](images/12_move_detection.png)
 
-Amarelo = esvaziou | Ciano = ocupou | Cinza = sem mudanca
+Amarelo = saiu de la | Ciano = chegou aqui
 
 ---
 
@@ -201,64 +181,23 @@ Amarelo = esvaziou | Ciano = ocupou | Cinza = sem mudanca
 
 ---
 
-## Proximos Passos: Classificacao de Pecas
+## Proximos Passos
 
 <div class="columns">
 <div>
 
-**Abordagens classicas a investigar:**
+**Classificacao de pecas:**
 
-- **Template matching** (NCC/SSD)
-- **Hu Moments** — forma invariante
-- **Contornos** — area, perimetro, convexidade
-- **HOG** — gradientes orientados
+Identificar o **tipo** de cada peca (peao, torre, bispo, etc.) usando forma, contorno e tamanho.
 
 </div>
 <div>
 
-**Visao futura (Etapa 4):**
+**Leitura completa do jogo:**
 
-- Reconstruir posicao completa (FEN)
-- Gerar notacao algebrica (Nf3, exd5)
-- Validar legalidade de lances
-- Tracking temporal entre frames
-
-</div>
-</div>
-
----
-
-## Tecnicas Classicas Demonstradas
-
-<div class="columns">
-<div>
-
-- Histograma e equalizacao (global + CLAHE)
-- 4 operadores de borda (Roberts, Prewitt, Sobel, Canny)
-- Operacoes morfologicas (erosao, dilatacao, abertura, fechamento)
-- Transformada de Hough
-- Homografia e correcao de perspectiva
-
-</div>
-<div>
-
-- Features classicas + classificacao por votacao
-- Espaco de cores HSV para classificacao
-- Analise temporal (deteccao de jogadas)
-- Widgets interativos (ipywidgets)
-- Compativel com Google Colab
+- Montar a posicao completa do tabuleiro
+- Gerar a notacao da jogada (ex: Cavalo para f3)
+- Acompanhar a partida ao longo do tempo
 
 </div>
 </div>
-
----
-
-## Obrigado
-
-### Analise de Tabuleiros de Xadrez
-
-**Repositorio:** [github.com/daviludvig/classical-cv](https://github.com/daviludvig/classical-cv)
-
-**Notebook interativo:** `notebooks/main.ipynb` (funciona no Google Colab)
-
-![bg right:40% 80%](images/slide_warped_grid.jpg)

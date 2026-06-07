@@ -489,6 +489,67 @@ def detect_board_corners(
     return order_corners(corners)
 
 
+
+def detect_board_corners_combined(
+    gray: np.ndarray,
+    blur_ksize: int = 5,
+    canny_low: int = 50,
+    canny_high: int = 150,
+    hough_threshold: int = 80,
+    angle_tol: float = np.pi / 6,
+    n_grid_lines: int = 9,
+    min_gap: float = 20,
+) -> np.ndarray | None:
+    """Detect board corners using Hough line intersections.
+
+    Pipeline:
+        1. Gaussian blur + Canny (full image)
+        2. Standard Hough → cluster into h_clusters / v_clusters
+        3. _best_grid_window selects the 9 most regularly-spaced clusters
+        4. Intersect outermost H and V lines → 4 corners
+
+    Returns:
+        (4, 2) float32 array ordered TL, TR, BR, BL — or *None*.
+    """
+    blurred = blur(gray, ksize=blur_ksize)
+    edges = detect_edges(blurred, low=canny_low, high=canny_high)
+
+    lines = detect_lines_hough(edges, threshold=hough_threshold)
+    if lines is None:
+        return None
+
+    horiz, vert = classify_lines(lines, angle_tol)
+    if len(horiz) < 2 or len(vert) < 2:
+        return None
+
+    h_clusters = _cluster_lines_full(
+        horiz, n_target=999, min_gap=min_gap,
+        img_shape=gray.shape, is_horizontal=True,
+    )
+    v_clusters = _cluster_lines_full(
+        vert, n_target=999, min_gap=min_gap,
+        img_shape=gray.shape, is_horizontal=False,
+    )
+
+    h_grid = _best_grid_window(h_clusters, n_grid_lines, gray.shape, is_horizontal=True)
+    v_grid = _best_grid_window(v_clusters, n_grid_lines, gray.shape, is_horizontal=False)
+
+    if len(h_grid) < 3 or len(v_grid) < 3:
+        return None
+
+    # h_grid[-1] is the board's wooden frame edge (clearly visible as the last
+    # Hough line at the bottom).  The GT annotation marks the playing-area
+    # boundary, which corresponds to h_grid[-2] — one step above the frame.
+    tl = hough_line_intersection(*h_grid[0],  *v_grid[0])
+    tr = hough_line_intersection(*h_grid[0],  *v_grid[-1])
+    br = hough_line_intersection(*h_grid[-2], *v_grid[-1])
+    bl = hough_line_intersection(*h_grid[-2], *v_grid[0])
+
+    if any(p is None for p in [tl, tr, br, bl]):
+        return None
+    return order_corners(np.array([tl, tr, br, bl], dtype=np.float32))
+
+
 # ---------------------------------------------------------------------------
 # Board contour detection
 # ---------------------------------------------------------------------------
@@ -520,10 +581,19 @@ def find_board_contour(
     for cnt in sorted(contours, key=cv2.contourArea, reverse=True):
         if cv2.contourArea(cnt) < min_area:
             break
+        # Try increasing epsilon on the raw contour first
         peri = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
-        if len(approx) == 4:
-            return approx.reshape(4, 2).astype(np.float32)
+        for eps in [0.02, 0.04, 0.06, 0.08, 0.10]:
+            approx = cv2.approxPolyDP(cnt, eps * peri, True)
+            if len(approx) == 4:
+                return approx.reshape(4, 2).astype(np.float32)
+        # Fall back: convex hull tends to give a cleaner quadrilateral
+        hull = cv2.convexHull(cnt)
+        hull_peri = cv2.arcLength(hull, True)
+        for eps in [0.02, 0.04, 0.06, 0.08, 0.10, 0.15]:
+            approx = cv2.approxPolyDP(hull, eps * hull_peri, True)
+            if len(approx) == 4:
+                return approx.reshape(4, 2).astype(np.float32)
 
     return None
 
