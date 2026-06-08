@@ -260,30 +260,45 @@ def make_dataloaders(
         Subset(full_dataset, train_idx),
         batch_size=batch_size, shuffle=True,
         num_workers=num_workers, pin_memory=True,
+        persistent_workers=num_workers > 0,
     )
     val_loader = DataLoader(
         Subset(val_dataset, val_idx),
         batch_size=batch_size, shuffle=False,
         num_workers=num_workers, pin_memory=True,
+        persistent_workers=num_workers > 0,
     )
     return train_loader, val_loader, full_dataset.classes
 
 
-def _run_epoch(model, loader, criterion, optimizer, device, training: bool):
+def _run_epoch(model, loader, criterion, optimizer, device, training: bool,
+               scaler=None, grad_clip: float | None = None):
+    import torch
     model.train(training)
     total_loss = correct = n = 0
-    import torch
+    amp_enabled = scaler is not None
     ctx = torch.enable_grad() if training else torch.no_grad()
     with ctx:
         for imgs, labels in loader:
             imgs, labels = imgs.to(device), labels.to(device)
             if training:
-                optimizer.zero_grad()
-            logits = model(imgs)
-            loss = criterion(logits, labels)
+                optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type=device.type, enabled=amp_enabled):
+                logits = model(imgs)
+                loss = criterion(logits, labels)
             if training:
-                loss.backward()
-                optimizer.step()
+                if scaler is not None:
+                    scaler.scale(loss).backward()
+                    if grad_clip is not None:
+                        scaler.unscale_(optimizer)
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    if grad_clip is not None:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                    optimizer.step()
             total_loss += loss.item() * len(labels)
             correct += (logits.argmax(1) == labels).sum().item()
             n += len(labels)
@@ -294,12 +309,16 @@ def train(
     data_dir: Union[str, Path],
     save_path: Union[str, Path],
     phase1_epochs: int = 10,
-    phase2_epochs: int = 10,
+    phase2_epochs: int = 15,
     batch_size: int = 64,
     lr_phase1: float = 1e-3,
-    lr_phase2: float = 1e-4,
+    lr_phase2: float = 3e-5,
     img_size: int = 224,
     num_workers: int = 2,
+    lr_decay: float = 0.3,
+    label_smoothing: float = 0.1,
+    warmup_epochs: int = 2,
+    grad_clip: float = 1.0,
 ) -> list[dict]:
     """Train a ResNet-34 piece classifier with two-phase transfer learning.
 
@@ -333,30 +352,55 @@ def train(
     print(f"Classes ({len(classes)}): {classes}")
     print(f"Train: {len(train_loader.dataset)} | Val: {len(val_loader.dataset)}")
 
+    import math
+
     model = build_model(num_classes=len(classes)).to(device)
-    criterion = nn.CrossEntropyLoss()
     history: list[dict] = []
     best_val_acc = 0.0
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    scaler = torch.cuda.amp.GradScaler() if device.type == "cuda" else None
+    if scaler is not None:
+        print("AMP (float16) enabled")
 
     for phase, epochs, lr, frozen in [
         ("transfer", phase1_epochs, lr_phase1, True),
         ("finetune", phase2_epochs, lr_phase2, False),
     ]:
         if frozen:
+            # Phase 1: only train the head — simple Adam, no label smoothing
             freeze_backbone(model)
+            params = [p for p in model.parameters() if p.requires_grad]
+            optimizer = torch.optim.Adam(params, lr=lr)
+            criterion = nn.CrossEntropyLoss()
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+            phase_clip = None
         else:
+            # Phase 2: discriminative LR (earlier layers trained slower),
+            # AdamW, label smoothing, warmup + cosine decay, gradient clipping
             unfreeze_backbone(model)
+            param_groups = _layer_param_groups(model, lr, lr_decay)
+            optimizer = torch.optim.AdamW(param_groups, weight_decay=1e-4)
+            criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
-        params = [p for p in model.parameters() if p.requires_grad]
-        optimizer = torch.optim.Adam(params, lr=lr)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-        print(f"\n--- Phase: {phase} ({epochs} epochs, lr={lr}) ---")
+            def _lr_lambda(ep, _wm=warmup_epochs, _ep=epochs):
+                if ep < _wm:
+                    return (ep + 1) / _wm
+                t = (ep - _wm) / max(1, _ep - _wm)
+                return 0.5 * (1.0 + math.cos(math.pi * t))
+
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, _lr_lambda)
+            phase_clip = grad_clip
+
+        lrs = [f"{g['lr']:.1e}" for g in optimizer.param_groups]
+        print(f"\n--- Phase: {phase} ({epochs} epochs) | LRs: {lrs} ---")
 
         for epoch in range(1, epochs + 1):
-            tr_loss, tr_acc = _run_epoch(model, train_loader, criterion, optimizer, device, training=True)
-            vl_loss, vl_acc = _run_epoch(model, val_loader, criterion, optimizer, device, training=False)
+            tr_loss, tr_acc = _run_epoch(model, train_loader, criterion, optimizer, device,
+                                         training=True, scaler=scaler, grad_clip=phase_clip)
+            vl_loss, vl_acc = _run_epoch(model, val_loader, criterion, optimizer, device,
+                                         training=False)
             scheduler.step()
 
             rec = dict(epoch=epoch, phase=phase,
@@ -373,6 +417,161 @@ def train(
                     "img_size": img_size,
                 }, str(save_path))
                 print(f"    Saved best model (val_acc={best_val_acc:.4f})")
+
+    print(f"\nBest val accuracy: {best_val_acc:.4f}")
+    return history
+
+
+# ---------------------------------------------------------------------------
+# Resume fine-tuning
+# ---------------------------------------------------------------------------
+
+def _layer_param_groups(model, base_lr: float, decay: float = 0.3) -> list[dict]:
+    """Layer-wise learning rates for ResNet-34.
+
+    Earlier layers (low-level features) get much lower LR than later ones.
+    This prevents destroying generic features while specialising the top layers.
+
+    Effective LRs (decay=0.3):
+      fc      → base_lr × 1.0
+      layer4  → base_lr × 0.3
+      layer3  → base_lr × 0.09
+      layer2  → base_lr × 0.027
+      layer1  → base_lr × 0.008
+      stem    → base_lr × 0.002
+    """
+    layer_order = ["fc", "layer4", "layer3", "layer2", "layer1", ""]
+    assigned: set[str] = set()
+    groups = []
+    for i, prefix in enumerate(layer_order):
+        params = [
+            p for name, p in model.named_parameters()
+            if p.requires_grad and name not in assigned
+            and (prefix == "" or name.startswith(prefix))
+        ]
+        for name, p in model.named_parameters():
+            if p.requires_grad and name not in assigned and (prefix == "" or name.startswith(prefix)):
+                assigned.add(name)
+        if params:
+            groups.append({"params": params, "lr": base_lr * (decay ** i)})
+    return groups
+
+
+def resume_finetune(
+    model_path: Union[str, Path],
+    data_dir: Union[str, Path],
+    extra_epochs: int = 15,
+    batch_size: int = 64,
+    base_lr: float = 3e-5,
+    img_size: int = 224,
+    num_workers: int = 2,
+    lr_decay: float = 0.3,
+    label_smoothing: float = 0.1,
+    warmup_epochs: int = 2,
+    grad_clip: float = 1.0,
+    weight_decay: float = 1e-4,
+) -> list[dict]:
+    """Continue fine-tuning from a saved checkpoint with best practices.
+
+    Improvements over the base train() phase 2:
+      - Discriminative (layer-wise) learning rates: earlier layers train slower
+      - AdamW with weight decay (better generalisation than Adam)
+      - Label smoothing (improves rare classes: king, queen)
+      - Linear LR warmup + cosine annealing
+      - Gradient clipping (stabilises training)
+      - AMP (float16 on CUDA)
+    """
+    import math
+    import torch
+    import torch.nn as nn
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device: {device}")
+
+    model, _, classes = load_classifier(model_path)
+    unfreeze_backbone(model)
+
+    train_loader, val_loader, _ = make_dataloaders(
+        data_dir, batch_size=batch_size, img_size=img_size, num_workers=num_workers
+    )
+    print(f"Train: {len(train_loader.dataset)} | Val: {len(val_loader.dataset)}")
+
+    param_groups = _layer_param_groups(model, base_lr, lr_decay)
+    lrs = [f"{g['lr']:.1e}" for g in param_groups]
+    print(f"Layer-wise LRs (fc→stem): {lrs}")
+
+    optimizer = torch.optim.AdamW(param_groups, weight_decay=weight_decay)
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+
+    def _lr_lambda(epoch: int) -> float:
+        if epoch < warmup_epochs:
+            return (epoch + 1) / warmup_epochs
+        t = (epoch - warmup_epochs) / max(1, extra_epochs - warmup_epochs)
+        return 0.5 * (1.0 + math.cos(math.pi * t))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, _lr_lambda)
+    scaler = torch.cuda.amp.GradScaler() if device.type == "cuda" else None
+    if scaler:
+        print("AMP (float16) enabled")
+
+    model_path = Path(model_path)
+    best_val_acc = 0.0
+    history: list[dict] = []
+
+    print(f"\n--- Resume fine-tune ({extra_epochs} epochs, base_lr={base_lr:.1e}) ---")
+
+    for epoch in range(1, extra_epochs + 1):
+        # ── train ────────────────────────────────────────────────────────────
+        model.train()
+        tr_loss = tr_correct = tr_n = 0
+        with torch.enable_grad():
+            for imgs, labels in train_loader:
+                imgs, labels = imgs.to(device), labels.to(device)
+                optimizer.zero_grad(set_to_none=True)
+                with torch.autocast(device_type=device.type, enabled=scaler is not None):
+                    logits = model(imgs)
+                    loss = criterion(logits, labels)
+                if scaler:
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                    optimizer.step()
+                tr_loss += loss.item() * len(labels)
+                tr_correct += (logits.argmax(1) == labels).sum().item()
+                tr_n += len(labels)
+
+        # ── validate ─────────────────────────────────────────────────────────
+        model.eval()
+        vl_loss = vl_correct = vl_n = 0
+        with torch.no_grad():
+            for imgs, labels in val_loader:
+                imgs, labels = imgs.to(device), labels.to(device)
+                with torch.autocast(device_type=device.type, enabled=scaler is not None):
+                    logits = model(imgs)
+                    loss = criterion(logits, labels)
+                vl_loss += loss.item() * len(labels)
+                vl_correct += (logits.argmax(1) == labels).sum().item()
+                vl_n += len(labels)
+
+        scheduler.step()
+        tr_acc = tr_correct / tr_n
+        vl_acc = vl_correct / vl_n
+        rec = dict(epoch=epoch, phase="resume_finetune",
+                   train_loss=tr_loss / tr_n, val_loss=vl_loss / vl_n,
+                   train_acc=tr_acc, val_acc=vl_acc)
+        history.append(rec)
+        print(f"  Ep {epoch:3d} | loss {tr_loss/tr_n:.4f}/{vl_loss/vl_n:.4f} | acc {tr_acc:.3f}/{vl_acc:.3f}")
+
+        if vl_acc > best_val_acc:
+            best_val_acc = vl_acc
+            torch.save({"model_state": model.state_dict(),
+                        "classes": classes, "img_size": img_size}, str(model_path))
+            print(f"    Saved best model (val_acc={best_val_acc:.4f})")
 
     print(f"\nBest val accuracy: {best_val_acc:.4f}")
     return history

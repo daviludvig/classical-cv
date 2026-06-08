@@ -121,10 +121,8 @@ O objetivo final e construir um sistema completo de leitura de tabuleiro de xadr
 | --- | --- | --- |
 | **1. Leitura do tabuleiro** | Detectar, corrigir perspectiva, segmentar 8x8 | Concluido |
 | **2. Identificacao de ocupacao** | Determinar quais casas tem pecas | Concluido |
-| **3. Classificacao de pecas** | Identificar tipo de peca (peao, torre, bispo...) | Em andamento |
+| **3. Classificacao de pecas** | Identificar tipo de peca (peao, torre, bispo...) | Concluido — F1 = 91% |
 | **4. Indicacao de jogadas** | Comparar estados, gerar notacao PGN | Planejado |
-
-**Atualmente estamos na transicao da Etapa 2 para a Etapa 3.**
 
 ![Metricas por imagem](images/13_metrics_bar.png)
 

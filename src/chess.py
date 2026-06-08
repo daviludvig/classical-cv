@@ -489,6 +489,74 @@ def detect_board_corners(
     return order_corners(corners)
 
 
+def _checkerboard_score(gray: np.ndarray, corners: np.ndarray, dst_size: int = 160) -> float:
+    """Score candidate corners by checkerboard contrast after perspective warp.
+
+    Warps the image using the candidate corners and measures the mean intensity
+    difference between light and dark squares.  A correct detection yields
+    clearly alternating squares; a wrong detection yields near-zero contrast.
+    """
+    try:
+        src = order_corners(corners)
+        dst_pts = np.array(
+            [[0, 0], [dst_size, 0], [dst_size, dst_size], [0, dst_size]],
+            dtype=np.float32,
+        )
+        H, _ = cv2.findHomography(src, dst_pts)
+        warped = cv2.warpPerspective(gray, H, (dst_size, dst_size))
+    except Exception:
+        return 0.0
+
+    cs = dst_size // 8
+    margin = max(1, cs // 5)
+    light, dark = 0.0, 0.0
+    for r in range(8):
+        for c in range(8):
+            cell = warped[r * cs + margin:(r + 1) * cs - margin,
+                          c * cs + margin:(c + 1) * cs - margin]
+            if (r + c) % 2 == 0:
+                light += float(np.mean(cell))
+            else:
+                dark += float(np.mean(cell))
+    return abs(light - dark) / 32.0
+
+
+def detect_board_corners_robust(
+    img_bgr: np.ndarray,
+    **hough_kw,
+) -> np.ndarray | None:
+    """Detect board corners trying multiple preprocessings, pick best by quality.
+
+    Tries four preprocessings in order (raw, CLAHE, bilateral, CLAHE+bilateral).
+    Each is passed to :func:`detect_board_corners`; the candidate with the
+    highest checkerboard contrast score is returned.
+
+    Using CLAHE helps suppress strong background patterns (floor tiles, wood
+    grain) that compete with the board lines in the Hough transform.
+
+    Args:
+        img_bgr: original BGR image (not pre-converted to gray).
+        **hough_kw: forwarded to :func:`detect_board_corners`.
+
+    Returns:
+        (4, 2) float32 array ordered TL, TR, BR, BL — or *None*.
+    """
+    gray_raw = to_gray(img_bgr)
+    gray_clahe = clahe(gray_raw)
+    gray_bilateral = cv2.bilateralFilter(gray_raw, 9, 75, 75)
+    gray_clahe_bilateral = cv2.bilateralFilter(gray_clahe, 9, 75, 75)
+
+    best_corners, best_score = None, -1.0
+    for gray in (gray_raw, gray_clahe, gray_bilateral, gray_clahe_bilateral):
+        corners = detect_board_corners(gray, **hough_kw)
+        if corners is None:
+            continue
+        score = _checkerboard_score(gray_raw, corners)
+        if score > best_score:
+            best_score, best_corners = score, corners
+
+    return best_corners
+
 
 def detect_board_corners_combined(
     gray: np.ndarray,
