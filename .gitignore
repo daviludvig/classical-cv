@@ -19,5 +19,8 @@ venv/
 # Outputs — ignore timestamped run folders, keep directory structure
 outputs/
 
+# Trained model weights — distributed separately (see README)
+models/*.pth
+
 # macOS
 .DS_Store

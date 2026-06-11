@@ -1,132 +1,112 @@
-# Classical Computer Vision Project
+# Chess Board Reader
 
-Projects developed for the Computer Vision course (INE410121 / TRV410001) at UFSC,
-focusing on classical image processing techniques — no deep learning.
+Computer vision pipeline for reading chessboards from images — board detection, piece occupancy, piece color, and piece type classification using a combination of classical CV and deep learning.
 
-## Current Project: Chessboard Detection & Occupancy Analysis
-
-A classical computer vision system for understanding chessboard state from images.
-The pipeline detects the board, corrects perspective via homography, segments an 8x8 grid,
-classifies each square as occupied or empty using intensity/edge/texture features,
-and detects moves by comparing two frames.
-
-**Dataset:** [Synthetic Chess Board Images](https://www.kaggle.com/datasets/thefamousrat/synthetic-chess-board-images) (Kaggle)
-
-## Topics Covered
-
-- Image preprocessing & filtering (grayscale, Gaussian blur)
-- Edge detection (Canny, Sobel)
-- Line detection (Hough Transform)
-- Contour detection & polygon approximation
-- Perspective correction (homography)
-- Morphological operations (opening, closing)
-- Feature extraction (intensity, edge density, texture variance)
-- Threshold-based occupancy classification
-- Temporal analysis (move detection via frame comparison)
-
-## Running locally
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/daviludvig/classical-cv.git
-cd classical-cv
-```
-
-### 2. Create and activate a virtual environment
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure Kaggle credentials
-
-The dataset is downloaded automatically via `kagglehub`. To get your API token:
-
-1. Go to <https://www.kaggle.com/settings>
-2. Scroll to the **API** section
-3. Click **Create New Token**
-4. Copy the token shown (starts with `KGAT_...`)
-
-Then configure your `.env`:
-
-```bash
-cp .env.example .env
-# Open .env and replace KGAT_your_token_here with your token
-```
-
-### 5. Launch Jupyter
-
-```bash
-jupyter notebook notebooks/main.ipynb
-```
-
-The first cell calls `setup()`, which downloads the dataset on first run and caches it locally.
-
-### Export notebook to PDF (without TeX)
-
-If `nbconvert --to pdf` fails due to missing `xelatex`, use:
-
-```bash
-bash scripts/export_notebook_pdf.sh notebooks/main.ipynb
-```
-
-This script exports to HTML first and then:
-- generates PDF automatically if Chrome/Chromium is available
-- otherwise leaves the HTML file in `outputs/exports/` for manual Print to PDF
+**Course:** INE410121 / TRV410001 — Visão Computacional · UFSC  
+**Authors:** Davi Ludvig & Julia Macedo  
+**Dataset:** [Synthetic Chess Board Images](https://www.kaggle.com/datasets/thefamousrat/synthetic-chess-board-images) (Kaggle, CC0)
 
 ---
 
-## Running on Google Colab
+## Pipeline
 
-Open `notebooks/main.ipynb` in Colab.
-Cell 0 of the notebook handles credentials — fill in your token there before running.
+```
+Image (1280×1280)
+    │
+    ▼  Gaussian blur + Canny + Hough lines  (classical)
+Board corners detected
+    │
+    ▼  Homography  (classical)
+Rectified board (480×480, top-down)
+    │
+    ▼  Feature voting — std, edge density, texture, center-border diff  (classical)
+Occupancy map 8×8
+    │
+    ▼  ResNet-34 transfer learning  (deep learning)
+Piece map: {A1: pawn_w, E4: queen_b, ...}
+```
 
----
+## Results
+
+| Component | Approach | Result |
+|---|---|---|
+| Board detection | Hough + Homography | Robust |
+| 8×8 segmentation | Uniform division | Exact |
+| Occupancy | Feature voting | **F1 = 77%** |
+| Piece color | HSV threshold | ~80% |
+| **Piece type** | **ResNet-34 (TL + fine-tuning)** | **F1 = 91%** |
+
+Evaluated on 50 images with GT occupancy (isolates the DL classifier from classical pipeline errors).
+
+## Repository Structure
+
+```
+classical-cv/
+├── notebooks/
+│   └── main.ipynb              # Full pipeline walkthrough
+├── src/
+│   ├── setup.py                # Environment + dataset bootstrap (local & Colab)
+│   ├── chess.py                # Board detection, perspective, segmentation, occupancy
+│   ├── piece_classifier.py     # ResNet-34 training, inference, evaluation
+│   └── utils.py                # Shared utilities
+├── models/
+│   └── piece_classifier_resnet34.pth  # Trained weights (download separately — see below)
+├── docs/
+│   ├── intro/                  # Project overview and initial presentation
+│   └── andamento/              # Progress report — DL classifier results
+└── outputs/                    # Generated figures and metrics (not versioned)
+```
+
+## Setup
+
+**Requirements:** Python 3.10+, PyTorch (CUDA recommended for training), OpenCV, NumPy, Matplotlib, ipywidgets.
+
+```bash
+pip install torch torchvision opencv-python numpy matplotlib ipywidgets kagglehub python-dotenv
+```
+
+**Kaggle credentials** — create `.env` at the repo root (see `.env.example`):
+
+```dotenv
+KAGGLE_API_TOKEN=KGAT_your_token_here
+```
+
+The dataset (~457 MB) is downloaded automatically on first run via `kagglehub`.
+
+## Trained Model
+
+The trained ResNet-34 weights are not versioned in this repository (binary, ~85 MB).
+
+> **Download link:** _to be defined — see [issue #1](https://github.com/daviludvig/classical-cv/issues/1)_
+
+Place the downloaded file at `models/piece_classifier_resnet34.pth` before running the inference cells.  
+To retrain from scratch, delete the file and run the training cell in the notebook.
+
+## Running
+
+Open `notebooks/main.ipynb` and run cells top to bottom. The notebook covers:
+
+1. Dataset loading and sampling
+2. Preprocessing and histogram analysis
+3. Edge detection and Hough lines
+4. Perspective correction (homography)
+5. 8×8 segmentation
+6. Occupancy detection (classical features + voting)
+7. Piece color classification (HSV)
+8. Piece type classification (ResNet-34 transfer learning)
+9. Evaluation metrics
+
+To run on **Google Colab**, remove the `sys.path.insert` line in the header cell and set `os.environ["KAGGLE_API_TOKEN"]` before calling `setup()`.
+
+## Setup Kaggle credentials
+
+1. Go to <https://www.kaggle.com/settings> → **API** → **Create New Token**
+2. Copy the token (starts with `KGAT_...`)
+3. `cp .env.example .env` and fill in your token
 
 ## Contributing
 
-Always work on a branch — **never commit directly to `main`**.
-
-```bash
-git checkout -b feature/my-feature   # create branch
-# ... work ...
-git push origin feature/my-feature
-# open a Pull Request to main on GitHub
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
----
-
-## Project Structure
-
-```text
-classical-cv/
-├── notebooks/
-│   └── main.ipynb          # Main project notebook (chessboard analysis)
-├── src/
-│   ├── setup.py            # Environment + dataset bootstrap
-│   ├── chess.py             # Board detection, segmentation, occupancy, moves
-│   └── utils.py            # Shared utilities (save_fig, save_metrics, ...)
-├── docs/
-│   ├── intro.md            # Detailed project introduction & methodology
-│   └── apresentacao.md     # Presentation slides (Marp format)
-├── outputs/
-│   ├── figures/            # Generated plots (per-run folders, not versioned)
-│   └── results/            # Experiment metrics (per-run folders, not versioned)
-├── requirements.txt
-└── .env.example            # Credentials template
-```
-
-> The dataset is downloaded automatically by `kagglehub` and cached at `~/.cache/kagglehub/`. No local `data/` folder needed.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch workflow and notebook filter setup.
 
 ## Authors
 
