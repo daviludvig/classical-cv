@@ -241,7 +241,7 @@ Avaliado em **50 imagens** com ocupação GT (isola o classificador do pipeline 
 
 ![h:380](images/15_piece_classification_result.png)
 
-*Imagem 9 — 28/28 peças corretas (100% de acurácia de tipo+cor)*
+*Imagem 1 — 35/35 peças corretas (100% de acurácia de tipo+cor)*
 
 </div>
 </div>
@@ -270,34 +270,88 @@ Detecção de jogadas
 
 ---
 
-## Próximos Passos
+## FEN Notation — Como Funcionaria
 
 <div class="columns">
 <div>
 
-**Notação PGN / FEN**
+O `piece_map` já tem tudo que o FEN precisa:
 
-Com o `piece_map` completo, reconstruir a posição em notação FEN é direto:
+```python
+piece_map = {
+  "A8": "rook_b",  "B8": "knight_b",
+  "E1": "king_w",  "D1": "queen_w", ...
+}
+```
 
-```
-rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
-```
-
-E detectar jogadas:
-```
-Comparar piece_map[t] → piece_map[t+1]
-→ gerar notação algébrica (ex: Nf3)
+**Conversão:**
+```python
+FEN_SYM = {
+  "pawn_w":"P",  "rook_w":"R",
+  "knight_w":"N","bishop_w":"B",
+  "queen_w":"Q", "king_w":"K",
+  "pawn_b":"p",  "rook_b":"r",
+  "knight_b":"n","bishop_b":"b",
+  "queen_b":"q", "king_b":"k",
+}
+# rank 8→1, file A→H
+# casas vazias = número (ex: 3)
+# resultado: "r1bqkb1r/pppp1ppp/..."
 ```
 
 </div>
 <div>
 
-**Melhorias possíveis**
+**Detecção de jogada** (dois frames):
 
-- Ajustar threshold de votação clássica → reduzir falsos positivos
-- Aumentar `num_workers` e batch para treino mais rápido
-- Avaliar domain shift: dataset sintético → tabuleiro real
-- Melhorar orientação do tabuleiro (ambiguidade 180°)
+```python
+# Quadrados que mudaram entre t e t+1
+emptied = {sq for sq in map_t
+           if sq not in map_t1}
+filled  = {sq for sq in map_t1
+           if sq not in map_t}
+
+# Caso simples: 1 peça moveu
+from_sq = emptied  # ex: E2
+to_sq   = filled   # ex: E4
+# → "e2e4" ou "Pe4"
+```
+
+**Limitação do dataset:** imagens com >32 peças (posições sintéticas inválidas) — não representam partidas reais. Move notation requereria vídeo de um jogo contínuo.
+
+</div>
+</div>
+
+---
+
+## Próximos Passos
+
+<div class="columns">
+<div>
+
+**FEN / Notação de jogadas**
+
+- Conversão `piece_map → FEN` é direta (ver slide anterior)
+- Para jogadas reais: coletar frames de um jogo contínuo
+- Validar legalidade dos lances contra as regras do xadrez
+
+**Melhorar a pipeline clássica**
+
+- Reduzir falsos positivos no detector de ocupação
+- Resolver ambiguidade de orientação 180° sem GT
+
+</div>
+<div>
+
+**Distribuição do modelo**
+
+- Publicar `.pth` (GitHub Releases ou HuggingFace Hub)
+- Atualizar `setup.py` para baixar automaticamente
+
+**Domain shift**
+
+- Avaliar performance em tabuleiros reais (não sintéticos)
+- Iluminação variável, peças de diferentes materiais
 
 </div>
 </div>
