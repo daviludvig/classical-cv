@@ -12,6 +12,8 @@ style: |
   .small { font-size: 17px; }
   .tag { background:#2c5f8a; color:#fff; padding:2px 8px; border-radius:4px; font-size:15px; }
   table { font-size: 17px; }
+  pre, code { font-size: 13px !important; }
+  .tight { line-height: 1.3; }
 ---
 
 # Análise de Tabuleiros de Xadrez
@@ -140,43 +142,43 @@ Peões são ~3× mais frequentes que reis — classes **desbalanceadas**.
 ## Treinamento — Detalhes
 
 <div class="columns">
-<div>
+<div class="small tight">
 
 **Fase 1 — Transfer Learning** (10 épocas)
 
-- Backbone: congelado
-- Otimizador: Adam
-- LR: `1e-3`
-- Loss: CrossEntropy
-- Scheduler: CosineAnnealing
+| | |
+|---|---|
+| Backbone | congelado |
+| Otimizador | Adam · LR `1e-3` |
+| Loss | CrossEntropy |
+| Scheduler | CosineAnnealing |
 
 **Fase 2 — Fine-tuning** (15 épocas)
 
-- Backbone: descongelado
-- Otimizador: AdamW + weight decay `1e-4`
-- LR: discriminativo por camada (fc → layer4 → layer3 → …, fator 0.3×)
-- Loss: CrossEntropy com **label smoothing 0.1**
-- Scheduler: warmup linear (2 épocas) + cosine annealing
-- Gradient clipping: `1.0`
+| | |
+|---|---|
+| Backbone | descongelado |
+| Otimizador | AdamW · wd `1e-4` |
+| LR | discriminativo por camada (fator 0.3×) |
+| Loss | CrossEntropy + label smoothing 0.1 |
+| Scheduler | warmup 2ep + cosine annealing |
+| Grad clip | 1.0 |
 
 </div>
-<div>
+<div class="small tight">
 
-**Augmentations (fase 1 e 2):**
+**Augmentations:**
 
 ```python
 RandomHorizontalFlip(p=0.5)
 RandomVerticalFlip(p=0.5)
 RandomRotation(15°)
-ColorJitter(brightness=0.3,
-            contrast=0.3,
+ColorJitter(brightness=0.3, contrast=0.3,
             saturation=0.2)
 Normalize(ImageNet μ/σ)
 ```
 
-**Device:** CUDA (GPU)
-**Batch size:** 64
-**img_size:** 224 × 224
+**Device:** CUDA · **Batch:** 64 · **img_size:** 224×224
 
 </div>
 </div>
@@ -209,39 +211,30 @@ Melhor imagem: F1 = 1.0 (100%) | Pior imagem: F1 = 50.8%
 Avaliado em **50 imagens** com ocupação GT (isola o classificador do pipeline clássico):
 
 <div class="columns">
-<div>
+<div class="small">
 
 | Métrica | Valor |
 |---|---|
 | Precisão | **91.0%** |
 | Recall | **91.0%** |
 | F1 | **91.0%** |
-| TP corretos | 1 412 |
-| Tipo errado | 140 |
-| FN / FP | 0 / 0 |
-
-<div class="small">
+| TP corretos / errados | 1 412 / 140 |
 
 | Classe | Acurácia |
 |---|---|
-| knight_b | **96.4%** |
-| pawn_b | **96.3%** |
-| knight_w | **95.9%** |
-| pawn_w | 93.8% |
-| king_w | 89.7% |
+| knight_b / knight_w | **96.4% / 95.9%** |
+| pawn_b / pawn_w | 96.3% / 93.8% |
 | rook_b / rook_w | 89.2% / 90.1% |
-| queen_w | 90.8% |
-| bishop_w / bishop_b | 87.6% / 88.2% |
-| **king_b** | 84.5% ← mais difícil |
-
-</div>
+| queen_b / queen_w | 87.8% / 90.8% |
+| bishop_b / bishop_w | 88.2% / 87.6% |
+| king_w / **king_b** | 89.7% / **84.5%** ← mais difícil |
 
 </div>
 <div>
 
-![h:380](images/15_piece_classification_result.png)
+![h:310](images/15_piece_classification_result.png)
 
-*Imagem 1 — 35/35 peças corretas (100% de acurácia de tipo+cor)*
+*Imagem 1 — 35/35 corretas (100%)*
 
 </div>
 </div>
@@ -273,51 +266,41 @@ Detecção de jogadas
 ## FEN Notation — Como Funcionaria
 
 <div class="columns">
-<div>
+<div class="small">
 
 O `piece_map` já tem tudo que o FEN precisa:
 
 ```python
-piece_map = {
-  "A8": "rook_b",  "B8": "knight_b",
-  "E1": "king_w",  "D1": "queen_w", ...
-}
-```
+piece_map = {"A8":"rook_b", "E1":"king_w", ...}
 
-**Conversão:**
-```python
 FEN_SYM = {
-  "pawn_w":"P",  "rook_w":"R",
-  "knight_w":"N","bishop_w":"B",
-  "queen_w":"Q", "king_w":"K",
-  "pawn_b":"p",  "rook_b":"r",
-  "knight_b":"n","bishop_b":"b",
-  "queen_b":"q", "king_b":"k",
+  "pawn_w":"P", "rook_w":"R", "knight_w":"N",
+  "bishop_w":"B", "queen_w":"Q", "king_w":"K",
+  "pawn_b":"p", "rook_b":"r", "knight_b":"n",
+  "bishop_b":"b", "queen_b":"q", "king_b":"k",
 }
-# rank 8→1, file A→H
-# casas vazias = número (ex: 3)
-# resultado: "r1bqkb1r/pppp1ppp/..."
+# rank 8→1, file A→H, vazios = número
+# "r1bqkb1r/pppp1ppp/2n5/4p3/..."
 ```
 
 </div>
-<div>
+<div class="small">
 
 **Detecção de jogada** (dois frames):
 
 ```python
-# Quadrados que mudaram entre t e t+1
-emptied = {sq for sq in map_t
-           if sq not in map_t1}
-filled  = {sq for sq in map_t1
-           if sq not in map_t}
-
-# Caso simples: 1 peça moveu
-from_sq = emptied  # ex: E2
-to_sq   = filled   # ex: E4
-# → "e2e4" ou "Pe4"
+emptied = {sq for sq in map_t if sq not in map_t1}
+filled  = {sq for sq in map_t1 if sq not in map_t}
+# from_sq → to_sq  ex: E2 → E4  =  "e2e4"
 ```
 
-**Limitação do dataset:** imagens com >32 peças (posições sintéticas inválidas) — não representam partidas reais. Move notation requereria vídeo de um jogo contínuo.
+**Limitação:** dataset tem >32 peças por imagem (sintético, posições inválidas). Move notation requer frames de um jogo real contínuo.
+
+**O que faltaria implementar:**
+- Detectar roque (rei move 2 casas)
+- En passant (peão captura diagonal sem peça no destino)
+- Promoção (peão chega à última fileira)
+- Validação de legalidade do lance
 
 </div>
 </div>
