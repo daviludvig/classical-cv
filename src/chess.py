@@ -970,11 +970,11 @@ def cell_features(cell_bgr: np.ndarray, margin: float = 0.15) -> dict:
 
 def is_occupied(
     feats: dict,
-    edge_thresh: float = 0.04,
-    texture_thresh: float = 80.0,
-    std_thresh: float = 18.0,
+    edge_thresh: float = 0.03,
+    texture_thresh: float = 50.0,
+    std_thresh: float = 12.0,
     center_thresh: float = 12.0,
-    min_votes: int = 2,
+    min_votes: int = 3,
 ) -> bool:
     """Simple vote-based occupancy classifier.
 
@@ -1013,25 +1013,21 @@ def build_occupancy_map(cells: list[list[np.ndarray]], **occ_kw) -> tuple[np.nda
 
 
 def classify_piece_color(cell_bgr: np.ndarray, margin: float = 0.25) -> str:
-    """Classify a piece as light ('w') or dark ('b') using HSV saturation.
+    """Classify a piece as light ('w') or dark ('b') using HSV value channel.
 
     Assumes the cell is already known to be occupied.  Dark (ebony) pieces
-    have lower value in HSV than light (boxwood) ones.
+    have lower HSV-Value than light (boxwood) ones.  Threshold 85 was tuned
+    on 30 GT-corrected images (white mean≈121, black mean≈54).
 
-    Returns ``'w'``, ``'b'``, or ``'?'`` if undetermined.
+    Returns ``'w'`` or ``'b'``.
     """
     h, w = cell_bgr.shape[:2]
     m = int(min(h, w) * margin)
     roi = cell_bgr[m : h - m, m : w - m]
-    # The square colour also contributes; use centre-only
     ch, cw = roi.shape[:2]
     center = roi[ch // 4 : 3 * ch // 4, cw // 4 : 3 * cw // 4]
     center_v = float(np.mean(cv2.cvtColor(center, cv2.COLOR_BGR2HSV)[:, :, 2]))
-    if center_v < 100:
-        return "b"
-    elif center_v > 160:
-        return "w"
-    return "?"
+    return "b" if center_v < 85 else "w"
 
 
 # ---------------------------------------------------------------------------

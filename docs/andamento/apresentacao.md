@@ -187,20 +187,20 @@ Normalize(ImageNet μ/σ)
 
 ## Resultados — Pipeline Clássica (ocupação)
 
-Avaliado em 10 imagens do dataset com detecção automática de cantos:
+Avaliado em 10 imagens com cantos detectados automaticamente (Hough):
 
 | Métrica | Valor |
 |---|---|
-| Acurácia média | **73.1%** |
-| Precisão média | 71.8% |
-| Recall médio | **87.5%** |
-| F1 médio | 77.2% |
+| Acurácia média | **65.5%** |
+| Precisão média | 62.5% |
+| Recall médio | **81.6%** |
+| F1 médio | 69.8% |
 
 <div class="small">
 
-**Observação:** recall alto indica que a maioria das peças presentes é detectada, mas há falsos positivos (casas vazias marcadas como ocupadas). O material uniforme (madeira/madeira) é o principal fator limitante.
+**Observação:** recall alto (81.6%) — a maioria das peças é detectada, mas há falsos positivos. O principal gargalo é a detecção automática de cantos: com cantos GT, F1 sobe para **88%**. Material uniforme (madeira/madeira) é o fator limitante intrínseco.
 
-Melhor imagem: F1 = 1.0 (100%) | Pior imagem: F1 = 50.8%
+Melhor imagem: F1 = 98.4% | Pior imagem: F1 = 50.0%
 
 </div>
 
@@ -259,7 +259,7 @@ Mapa de peças: {A1: pawn_w, E4: queen_b, ...}
 Detecção de jogadas
 ```
 
-**Acurácia de tipo+cor (pipeline completa):** F1 ≈ 91% para o classificador DL; F1 ≈ 77% para ocupação clássica.
+**Acurácia de tipo+cor (pipeline completa):** F1 ≈ 91% para o classificador DL; F1 ≈ 70% para ocupação (pipeline completa) / 88% com cantos GT.
 
 ---
 
@@ -347,8 +347,8 @@ filled  = {sq for sq in map_t1 if sq not in map_t}
 |---|---|---|
 | Detecção do tabuleiro | Hough + Homografia | Robusto |
 | Segmentação 8×8 | Divisão uniforme | Exato |
-| Ocupação | Votação de features | F1 = 77% |
-| Cor da peça | Threshold HSV | ~80% |
+| Ocupação | Votação de features | F1 = 70% (ponta a ponta) |
+| Cor da peça | Threshold HSV | ~88% |
 | **Tipo da peça** | **ResNet-34 (TL + FT)** | **F1 = 91%** |
 
 O projeto demonstra como **combinar visão clássica com transfer learning** para construir um pipeline completo de leitura de tabuleiro, aproveitando o melhor de cada abordagem.
