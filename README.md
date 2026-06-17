@@ -33,10 +33,19 @@ Piece map: {A1: pawn_w, E4: queen_b, ...}
 | Board detection | Hough + Homography | Robust |
 | 8×8 segmentation | Uniform division | Exact |
 | Occupancy | Feature voting | **F1 = 70%** (end-to-end) / 88% with GT corners |
-| Piece color | HSV threshold | ~88% |
+| Piece color | Fixed HSV-value threshold | ~82% (200 imgs, GT corners) |
 | **Piece type** | **ResNet-34 (TL + fine-tuning)** | **F1 = 91%** |
 
 Evaluated on 50 images with GT occupancy (isolates the DL classifier from classical pipeline errors).
+
+## Piece Classifier — Training
+
+The ResNet-34 piece classifier is trained in two phases, both starting from ImageNet-pretrained weights:
+
+1. **Transfer learning** (10 epochs) — the backbone is **frozen** and only the new classification head (12 piece classes) is trained. Fast, and it cannot damage the pretrained features while the head is still random.
+2. **Fine-tuning** (15 epochs) — the **whole network is unfrozen** and refined with a much smaller learning rate (lower for early layers, higher for later ones), adapting the features to the chess domain without erasing what was learned.
+
+Training cells (~62 000 labeled piece crops, roughly balanced across the 12 classes) are built by warping each board with its GT corners and saving every occupied square to `outputs/piece_cells/{label}/`. Data augmentation (flips, ±15° rotation, brightness/contrast/saturation jitter) makes the model robust to board orientation and lighting. See `src/piece_classifier.py`.
 
 ## Repository Structure
 
