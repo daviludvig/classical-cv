@@ -1053,6 +1053,121 @@ def detect_moves(
 
 
 # ---------------------------------------------------------------------------
+# FEN notation and move inference
+# ---------------------------------------------------------------------------
+
+_FEN_TYPE = {"pawn": "p", "knight": "n", "bishop": "b",
+             "rook": "r", "queen": "q", "king": "k"}
+_PT_NAME = {"pawn": "Peão", "knight": "Cavalo", "bishop": "Bispo",
+            "rook": "Torre", "queen": "Dama", "king": "Rei"}
+
+
+def piece_to_fen_symbol(label: str) -> str:
+    """Map a piece label like ``'knight_w'`` to its FEN symbol (``'N'``).
+
+    White pieces are uppercase, black pieces lowercase.
+    """
+    type_part, _, color = label.partition("_")
+    sym = _FEN_TYPE[type_part]
+    return sym.upper() if color == "w" else sym
+
+
+def board_to_fen(piece_map: dict, side: str = "w") -> str:
+    """Convert a ``{square: label}`` map (e.g. ``{"E1": "king_w"}``) into FEN.
+
+    Only the piece-placement field can be inferred from a single image; the
+    remaining FEN fields (side to move, castling rights, en passant target,
+    half/full-move clocks) are filled with neutral defaults.
+    """
+    ranks = []
+    for rank in range(8, 0, -1):
+        row, empty = "", 0
+        for file in "ABCDEFGH":
+            label = piece_map.get(f"{file}{rank}")
+            if label is None:
+                empty += 1
+                continue
+            if empty:
+                row += str(empty)
+                empty = 0
+            row += piece_to_fen_symbol(label)
+        if empty:
+            row += str(empty)
+        ranks.append(row)
+    return f"{'/'.join(ranks)} {side} - - 0 1"
+
+
+def _uci(square: str) -> str:
+    """``'E2'`` -> ``'e2'`` (UCI uses lowercase files)."""
+    return square[0].lower() + square[1]
+
+
+def _describe_move(before: dict, after: dict, frm: str, to: str, capture: bool) -> dict:
+    piece = before[frm]
+    ptype, color = piece.split("_")
+    dest_type = after[to].split("_")[0]
+    promo = _FEN_TYPE[dest_type] if (ptype == "pawn" and dest_type != "pawn") else ""
+    verb = "captura em" if capture else "para"
+    desc = f"{_PT_NAME[ptype]} {'branco' if color == 'w' else 'preto'} {verb} {_uci(to)}"
+    if promo:
+        desc += f", promove a {_PT_NAME[dest_type]}"
+    mtype = "promotion" if promo else ("capture" if capture else "move")
+    return {"type": mtype, "from": frm, "to": to,
+            "uci": _uci(frm) + _uci(to) + promo, "description": desc}
+
+
+def classify_move(before: dict, after: dict) -> dict:
+    """Infer a single chess move from two piece maps (``{square: label}``).
+
+    Handles quiet moves, captures, castling, en passant and promotion by
+    comparing which squares were emptied, filled or changed identity.
+    Returns a dict with ``type``, ``from``, ``to``, ``uci`` and a
+    human-readable ``description``. If the difference does not correspond to
+    one legal move (e.g. two unrelated positions), ``type`` is ``'ambiguous'``.
+    """
+    squares = set(before) | set(after)
+    vacated = sorted(s for s in squares if s in before and s not in after)
+    appeared = sorted(s for s in squares if s in after and s not in before)
+    changed = sorted(s for s in squares
+                     if s in before and s in after and before[s] != after[s])
+
+    # Castling — king and rook both move (2 emptied, 2 filled)
+    if len(vacated) == 2 and len(appeared) == 2 and not changed:
+        king_from = next((s for s in vacated if before[s].startswith("king")), None)
+        king_to = (next((s for s in appeared
+                         if abs(ord(s[0]) - ord(king_from[0])) == 2), None)
+                   if king_from else None)
+        if king_from and king_to:
+            side = "O-O" if king_to[0] > king_from[0] else "O-O-O"
+            return {"type": "castle", "from": king_from, "to": king_to,
+                    "uci": _uci(king_from) + _uci(king_to), "description": f"Roque {side}"}
+
+    # En passant — pawn moves diagonally to an empty square, capturing a pawn
+    if len(vacated) == 2 and len(appeared) == 1 and not changed:
+        dest = appeared[0]
+        mover = next((s for s in vacated
+                      if before[s].startswith("pawn") and s[0] != dest[0]), None)
+        captured = next((s for s in vacated if s != mover), None)
+        if mover and after[dest].startswith("pawn"):
+            return {"type": "en_passant", "from": mover, "to": dest,
+                    "uci": _uci(mover) + _uci(dest),
+                    "description": f"En passant {_uci(mover)}x{_uci(dest)} "
+                                   f"(captura peão em {_uci(captured)})"}
+
+    # Quiet move — one square emptied, one filled
+    if len(vacated) == 1 and len(appeared) == 1 and not changed:
+        return _describe_move(before, after, vacated[0], appeared[0], capture=False)
+
+    # Capture — origin emptied, destination changes identity
+    if len(vacated) == 1 and not appeared and len(changed) == 1:
+        return _describe_move(before, after, vacated[0], changed[0], capture=True)
+
+    return {"type": "ambiguous", "from": None, "to": None, "uci": None,
+            "description": (f"{len(vacated)} esvaziada(s), {len(appeared)} preenchida(s), "
+                            f"{len(changed)} alterada(s) — não corresponde a um lance único")}
+
+
+# ---------------------------------------------------------------------------
 # Visualisation helpers
 # ---------------------------------------------------------------------------
 
