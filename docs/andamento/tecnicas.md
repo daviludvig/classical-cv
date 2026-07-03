@@ -194,18 +194,18 @@ occupied = votes >= 2   # limiar: maioria simples (≥2 de 4)
 
 **Justificativa do limiar ≥2:** com material uniforme (madeira sobre madeira), nenhuma feature individual é confiável o suficiente. A combinação reduz falsos positivos e negativos.
 
-### Resultados (10 imagens, detecção automática de cantos)
+### Resultados (60 imagens, detecção automática de cantos)
 
 | Métrica | Média | Mediana | Mín | Máx |
 |---|---|---|---|---|
-| Acurácia | 73.1% | 64.8% | 43.8% | 100% |
-| Precisão | 71.8% | 63.4% | 38.6% | 100% |
-| Recall | **87.5%** | 92.0% | 48.4% | 100% |
-| F1 | 77.2% | 72.5% | 50.8% | 100% |
+| Acurácia | 64.5% | 59.4% | 34.4% | 98.4% |
+| Precisão | 59.8% | 58.8% | 0% | 100% |
+| Recall | **70.2%** | 79.6% | 0% | 100% |
+| F1 | 62.7% | 66.7% | 0% | 98.4% |
 
-**Observação:** recall alto (87.5%) indica que a maioria das peças é detectada, mas a precisão menor revela falsos positivos — o detector tende a marcar células vazias como ocupadas devido ao baixo contraste do dataset.
+Com **cantos do gabarito** (isolando o erro de detecção de cantos), o F1 sobe para **86.3%** — confirmando que o gargalo principal é a detecção automática de cantos, não a votação de ocupação.
 
-**Média de peças GT:** 32.1 | **Média detectada:** 41.3 — o pipeline superestima a ocupação.
+**Observação:** recall (70.2%) maior que precisão (59.8%) revela falsos positivos — o detector tende a marcar células vazias como ocupadas devido ao baixo contraste. O pipeline **superestima** a ocupação (~38 detecções vs ~32 peças reais).
 
 ---
 
@@ -382,9 +382,9 @@ Avaliado em **50 imagens** usando ocupação ground truth (isola o classificador
 
 | Limitação | Impacto | Causa |
 |---|---|---|
-| Material uniforme (madeira/madeira) | F1 clássico ≈ 77% | Baixo contraste peça-fundo |
+| Material uniforme (madeira/madeira) | F1 de ocupação ≈ 63% (ponta a ponta) | Baixo contraste peça-fundo |
 | Projeção 3D de peças altas | Falsos positivos em células vizinhas | Torre e rainha "vazam" para células adjacentes |
-| Ambiguidade de 180° | Possível orientação errada | Padrão de xadrez simétrico sob rotação 180° |
+| Ambiguidade de 180° (inerente) | ~42% dos tabuleiros ficam invertidos (0% de erro de eixo) | Cores do xadrez são simétricas sob 180°; resolvido reportando as duas FENs candidatas |
 | Limiares fixos | Fraca generalização | Calibrados para o dataset |
 | Domain shift CNN | Possível queda de F1 em fotos reais | Treinado apenas nas imagens do dataset |
 

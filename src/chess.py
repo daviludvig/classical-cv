@@ -1173,6 +1173,23 @@ def board_to_fen(piece_map: dict, side: str = "w", castling: str = "-",
     return f"{placement} {side} {castling} {en_passant} {halfmove} {fullmove}"
 
 
+def rotate_piece_map_180(piece_map: dict) -> dict:
+    """Return the piece map rotated 180° (files A<->H, ranks 1<->8).
+
+    A single image fixes the board orientation only up to a 180° rotation:
+    the checkerboard colours are symmetric under 180°, so ``detect_board_rotation``
+    resolves the board *axis* but not this final flip. The true board is
+    therefore either ``piece_map`` or its 180° rotation — this helper produces
+    the alternative so both candidate FENs can be reported.
+    """
+    out = {}
+    for sq, label in piece_map.items():
+        file_new = chr(ord("A") + (ord("H") - ord(sq[0].upper())))
+        rank_new = 9 - int(sq[1])
+        out[f"{file_new}{rank_new}"] = label
+    return out
+
+
 def _uci(square: str) -> str:
     """``'E2'`` -> ``'e2'`` (UCI uses lowercase files)."""
     return square[0].lower() + square[1]

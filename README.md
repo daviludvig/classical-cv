@@ -32,7 +32,7 @@ Piece map: {A1: pawn_w, E4: queen_b, ...}
 |---|---|---|
 | Board detection | Hough + Homography | Robust |
 | 8×8 segmentation | Uniform division | Exact |
-| Occupancy | Feature voting | **F1 = 70%** (end-to-end) / 88% with GT corners |
+| Occupancy | Feature voting | **F1 ≈ 63%** (end-to-end, 60 imgs) / 86% with GT corners |
 | Piece color | Fixed HSV-value threshold | ~82% (200 imgs, GT corners) |
 | **Piece type** | **ResNet-34 (TL + fine-tuning)** | **F1 = 91%** |
 

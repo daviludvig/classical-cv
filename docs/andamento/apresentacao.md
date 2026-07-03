@@ -289,18 +289,18 @@ As imagens entram em 224×224 e normalizadas, no padrão que a ResNet espera. Tr
 <div class="columns">
 <div>
 
-**10 imagens · cantos detectados automaticamente (Hough)**
+**60 imagens · cantos detectados automaticamente (Hough)**
 
 | Métrica | Valor |
 |---|---|
-| Recall médio | **81.6%** |
-| Precisão média | 62.5% |
-| F1 médio | 69.8% |
-| Acurácia média | 65.5% |
+| Recall médio | **70.2%** |
+| Precisão média | 59.8% |
+| F1 médio | 62.7% |
+| Acurácia média | 64.5% |
 
 <div class="small">
 
-Faixa por imagem: **50.0%** (pior) → **98.4%** (melhor)
+Faixa de F1 por imagem: mediana **66.7%**, de 0% (falha de cantos) a 98.4%.
 
 </div>
 
@@ -309,14 +309,14 @@ Faixa por imagem: **50.0%** (pior) → **98.4%** (melhor)
 
 **O que os números dizem**
 
-A pipeline **acha quase todas** as peças (recall alto), mas **erra para mais** — marca casas vazias como ocupadas (precisão menor).
+A pipeline **acha a maioria** das peças (recall mais alto), mas **erra para mais** — marca casas vazias como ocupadas (precisão menor).
 
 O gargalo não é a ocupação em si, e sim **achar os 4 cantos do tabuleiro**:
 
 <div class="callout big">
 
 Com cantos corretos (GT):
-F1 **70% → 88%**
+F1 **63% → 86%**
 
 </div>
 
@@ -393,7 +393,7 @@ Melhor: **cavalo** (silhueta única). Pior: **rei preto** — rei e dama são al
 
 | Etapa | Resultado |
 |---|---|
-| Ocupação | F1 70% · **88%** c/ cantos GT |
+| Ocupação | F1 63% · **86%** c/ cantos GT |
 | **Tipo da peça** | **F1 91%** |
 | Cor (HSV) | ~82% |
 
@@ -450,7 +450,7 @@ O gargalo conhecido (detecção de cantos) e o salto jogadas random -> jogo real
 |---|---|---|
 | Detecção do tabuleiro | Hough + homografia | Robusto, mas precisa de melhoria |
 | Segmentação 8×8 | Divisão uniforme | Exato |
-| Ocupação | Votação de características (clássico) | F1 = 70% · 88% c/ cantos GT |
+| Ocupação | Votação de características (clássico) | F1 = 63% · 86% c/ cantos GT |
 | Cor da peça | Limiar fixo de brilho HSV (clássico) | ~82% |
 | **Tipo da peça** | **ResNet-34 — transfer learning + fine-tuning** | **F1 = 91%** |
 

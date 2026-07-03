@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.chess import (  # noqa: E402
     piece_to_fen_symbol, board_placement_fen, board_to_fen,
     castling_rights_from_position, _normalize_castling, _validate_en_passant,
+    rotate_piece_map_180,
 )
 
 _BACK = ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"]
@@ -245,6 +246,26 @@ def castling_from_position_feeds_board_to_fen():
     m = start_map()
     fen = board_to_fen(m, side="w", castling=castling_rights_from_position(m))
     assert fen == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+# --- 180 rotation -----------------------------------------------------------
+@test
+def rotate_180_corners_and_center():
+    m = {"A1": "rook_w", "H8": "king_b", "E4": "queen_b", "D5": "pawn_w"}
+    r = rotate_piece_map_180(m)
+    assert r == {"H8": "rook_w", "A1": "king_b", "D5": "queen_b", "E4": "pawn_w"}
+
+
+@test
+def rotate_180_is_involution():
+    m = start_map()
+    assert rotate_piece_map_180(rotate_piece_map_180(m)) == m
+
+
+@test
+def rotate_180_preserves_piece_count():
+    m = start_map()
+    assert len(rotate_piece_map_180(m)) == len(m)
 
 
 # --- runner ------------------------------------------------------------------
