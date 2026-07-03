@@ -264,7 +264,7 @@ ResNet-34 backbone (33 camadas convolucionais)
 
 ### Dataset de treinamento
 
-- **Origem:** células extraídas das imagens do dataset sintético com anotações GT
+- **Origem:** células extraídas das imagens do dataset com anotações GT
 - **Volume:** ~48 000 imagens de 64×64 px (redimensionadas para 224×224 no dataloader)
 - **Split:** 80% treino / 20% validação (estratificado por classe)
 - **Desbalanceamento:** peões ~3× mais frequentes que reis/rainhas
@@ -385,8 +385,8 @@ Avaliado em **50 imagens** usando ocupação ground truth (isola o classificador
 | Material uniforme (madeira/madeira) | F1 clássico ≈ 77% | Baixo contraste peça-fundo |
 | Projeção 3D de peças altas | Falsos positivos em células vizinhas | Torre e rainha "vazam" para células adjacentes |
 | Ambiguidade de 180° | Possível orientação errada | Padrão de xadrez simétrico sob rotação 180° |
-| Limiares fixos | Fraca generalização | Calibrados para dataset sintético |
-| Domain shift CNN | Possível queda de F1 em fotos reais | Treinado apenas em renders Blender |
+| Limiares fixos | Fraca generalização | Calibrados para o dataset |
+| Domain shift CNN | Possível queda de F1 em fotos reais | Treinado apenas nas imagens do dataset |
 
 ---
 

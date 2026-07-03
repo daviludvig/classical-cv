@@ -54,7 +54,7 @@ Imagens (Kaggle) — peças e tabuleiro de **madeira**, material uniforme que cr
 <div class="columns">
 <div>
 
-- ~1 900 renders 1280×1280 de tabuleiros em ângulo
+- ~1 900 imagens 1280×1280 de tabuleiros em ângulo
 - Superfícies, iluminação e ângulos variados
 - Anotações por imagem: **posição das peças** + **cantos do tabuleiro** (ground truth [GT] = gabarito)
 
@@ -239,7 +239,7 @@ Para treinar, precisamos de **imagens rotuladas de células individuais**:
 
 </div>
 
-Como as peças são posicionadas **aleatoriamente** (dataset sintético), cada tipo aparece com frequência parecida — classes **balanceadas**, ao contrário de uma partida real.
+No dataset, cada tipo de peça aparece com frequência parecida — classes **balanceadas**, o que favorece o treino.
 
 </div>
 </div>

@@ -108,7 +108,6 @@ Comparacao temporal de mapas de ocupacao entre dois frames.
 | --- | --- |
 | Resolucao | 1280 x 1280 pixels (JPEG) |
 | Perspectiva | Vista angular (nao top-down) |
-| Renderizacao | Blender Cycles (fotorrealista) |
 | Material | Madeira (pecas e tabuleiro) |
 | Anotacoes | JSON com posicoes de pecas e cantos |
 | Licenca | CC0 — Dominio Publico |
@@ -144,7 +143,7 @@ Com a classificacao resolvida, o sistema podera reconstruir a posicao completa (
 - Material uniforme (madeira sobre madeira) = baixo contraste peca-fundo
 - Projecao 3D das pecas "vaza" para celulas vizinhas
 - Simetria de 180 do tabuleiro impede deteccao completa de orientacao
-- Limiares calibrados para dataset sintetico
+- Limiares calibrados para o dataset
 
 ## Organizacao da documentacao
 
