@@ -1072,13 +1072,58 @@ def piece_to_fen_symbol(label: str) -> str:
     return sym.upper() if color == "w" else sym
 
 
-def board_to_fen(piece_map: dict, side: str = "w") -> str:
-    """Convert a ``{square: label}`` map (e.g. ``{"E1": "king_w"}``) into FEN.
+def _normalize_castling(castling: str) -> str:
+    """Validate castling rights and return them in canonical ``KQkq`` order.
 
-    Only the piece-placement field can be inferred from a single image; the
-    remaining FEN fields (side to move, castling rights, en passant target,
-    half/full-move clocks) are filled with neutral defaults.
+    Accepts ``''`` or ``'-'`` (none) and any combination of ``K Q k q`` in any
+    order; rejects unknown characters and duplicates.
     """
+    if castling in ("", "-"):
+        return "-"
+    seen: set[str] = set()
+    for ch in castling:
+        if ch not in "KQkq":
+            raise ValueError(f"invalid castling character: {ch!r}")
+        if ch in seen:
+            raise ValueError(f"duplicate castling right: {ch!r}")
+        seen.add(ch)
+    return "".join(c for c in "KQkq" if c in seen)
+
+
+def _validate_en_passant(target: str) -> str:
+    """Validate an en passant target square (``'-'`` or e.g. ``'e3'``/``'e6'``)."""
+    if target == "-":
+        return target
+    target = target.lower()
+    if len(target) != 2 or target[0] not in "abcdefgh" or target[1] not in "36":
+        raise ValueError(f"invalid en passant target: {target!r}")
+    return target
+
+
+def castling_rights_from_position(piece_map: dict) -> str:
+    """Best-effort castling availability guessed from a single position.
+
+    A right is only *possible* when the king and the matching rook still sit on
+    their initial squares. This cannot tell whether they moved earlier, so the
+    result is an upper bound (a guess), never a certainty. Returns ``'-'`` when
+    no right is possible.
+    """
+    rights = ""
+    if piece_map.get("E1") == "king_w":
+        if piece_map.get("H1") == "rook_w":
+            rights += "K"
+        if piece_map.get("A1") == "rook_w":
+            rights += "Q"
+    if piece_map.get("E8") == "king_b":
+        if piece_map.get("H8") == "rook_b":
+            rights += "k"
+        if piece_map.get("A8") == "rook_b":
+            rights += "q"
+    return rights or "-"
+
+
+def board_placement_fen(piece_map: dict) -> str:
+    """Return only the piece-placement field of the FEN (ranks 8->1)."""
     ranks = []
     for rank in range(8, 0, -1):
         row, empty = "", 0
@@ -1094,7 +1139,38 @@ def board_to_fen(piece_map: dict, side: str = "w") -> str:
         if empty:
             row += str(empty)
         ranks.append(row)
-    return f"{'/'.join(ranks)} {side} - - 0 1"
+    return "/".join(ranks)
+
+
+def board_to_fen(piece_map: dict, side: str = "w", castling: str = "-",
+                 en_passant: str = "-", halfmove: int = 0,
+                 fullmove: int = 1) -> str:
+    """Convert a ``{square: label}`` map into a complete FEN string.
+
+    The **piece placement** field is derived from ``piece_map``. The remaining
+    five FEN fields cannot be inferred from a single image, so they are taken
+    from the arguments (with neutral defaults) and validated:
+
+    - ``side``       — ``'w'`` or ``'b'``
+    - ``castling``   — ``'-'`` or any combination of ``'KQkq'`` (order-free)
+    - ``en_passant`` — ``'-'`` or a target square on rank 3 or 6 (e.g. ``'e3'``)
+    - ``halfmove``   — halfmove clock, integer ``>= 0``
+    - ``fullmove``   — fullmove number, integer ``>= 1``
+
+    Raises ``ValueError`` for any malformed field.
+    """
+    if side not in ("w", "b"):
+        raise ValueError(f"side must be 'w' or 'b', got {side!r}")
+    castling = _normalize_castling(castling)
+    en_passant = _validate_en_passant(en_passant)
+    halfmove = int(halfmove)
+    fullmove = int(fullmove)
+    if halfmove < 0:
+        raise ValueError(f"halfmove clock must be >= 0, got {halfmove}")
+    if fullmove < 1:
+        raise ValueError(f"fullmove number must be >= 1, got {fullmove}")
+    placement = board_placement_fen(piece_map)
+    return f"{placement} {side} {castling} {en_passant} {halfmove} {fullmove}"
 
 
 def _uci(square: str) -> str:
