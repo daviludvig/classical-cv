@@ -1,0 +1,42 @@
+\section{Limitações e Trabalhos Futuros}
+\label{sec:limitacoes}
+
+\begin{table}[H]
+\centering
+\caption{Limitações conhecidas.}
+\begin{tabular}{@{}p{4cm}p{4.5cm}p{5cm}@{}}
+\toprule
+Limitação & Impacto & Causa \\
+\midrule
+Material uniforme (madeira/madeira) & F1 de ocupação $\approx$ 63\% ponta a ponta & Baixo contraste peça-fundo \\
+Projeção 3D de peças altas & Falsos positivos em casas vizinhas & Torre e dama ``vazam'' para casas adjacentes na foto em ângulo \\
+Ambiguidade de $180\degree$ (inerente) & \textasciitilde42\% dos tabuleiros lidos invertidos (0\% de erro de eixo) & Cores do tabuleiro são simétricas sob $180\degree$; mitigado reportando as duas FENs candidatas \\
+Limiares fixos (ocupação, cor) & Generalização fraca fora do dataset & Calibrados especificamente para este dataset \\
+\textit{Domain shift} da CNN & Possível queda de F1 em fotos reais & Treinado apenas com imagens sintéticas do dataset \\
+Ausência de sequências reais de jogo & \texttt{classify\_move} validado só em posições controladas & Dataset fornece posições independentes, não partidas contínuas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Trabalhos futuros}
+
+\begin{itemize}[nosep]
+  \item \textbf{Reforçar a detecção de cantos:} como o gargalo identificado (Seção
+        \ref{sec:resultados}) é a detecção automática dos 4 cantos do tabuleiro,
+        investigar detectores mais robustos (ex.: RANSAC sobre as retas de Hough,
+        ajuste com restrição de checkerboard) deve trazer o maior ganho de F1 de ponta
+        a ponta.
+  \item \textbf{Reduzir falsos positivos de ocupação:} calibrar limiares por imagem
+        (adaptativos) em vez de globais, ou combinar as quatro características por um
+        classificador aprendido em vez de votação por maioria fixa.
+  \item \textbf{Validação em jogo real:} testar a pipeline com fotos de um tabuleiro
+        físico real, com iluminação e materiais fora da distribuição do dataset
+        sintético, para quantificar o \textit{domain shift} da CNN.
+  \item \textbf{Sequências reais de jogo:} coletar ou gerar uma sequência contínua de
+        posições de uma mesma partida para validar \texttt{classify\_move} em condições
+        reais, incluindo o efeito acumulado de pequenos erros de leitura entre frames.
+  \item \textbf{Distribuição do modelo treinado:} publicar os pesos da ResNet-34
+        (\texttt{.pth}) em um local versionado com download automático via
+        \texttt{setup.py}, eliminando a necessidade de retreinar para reproduzir os
+        resultados.
+\end{itemize}

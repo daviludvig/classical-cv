@@ -1,0 +1,29 @@
+\section{Conclusão}
+
+Este trabalho implementou uma pipeline completa de leitura automática de tabuleiros de
+xadrez, combinando visão computacional clássica --- para geometria do tabuleiro,
+ocupação e cor --- com \textit{transfer learning} de uma ResNet-34 para a única etapa em
+que a abordagem clássica se mostrou insuficiente: a classificação do tipo de peça. A
+pipeline cobre o problema de ponta a ponta, da fotografia bruta em perspectiva até a
+notação FEN completa (seis campos) e a inferência de jogadas, incluindo casos especiais
+como captura, roque, \textit{en passant} e promoção.
+
+Os resultados quantitativos mostram que o classificador de tipo de peça baseado em
+\textit{deep learning} (F1 = 91,0\%) é hoje a etapa \textbf{mais precisa} do sistema,
+superando a etapa puramente clássica de detecção de ocupação (F1 = 62,7\% ponta a ponta,
+86,3\% isolando o erro de detecção de cantos). Esse resultado identifica claramente o
+gargalo do sistema: não é a classificação de tipo de peça, e sim a detecção geométrica
+robusta dos 4 cantos do tabuleiro sob baixo contraste --- o ponto de maior retorno para
+trabalho futuro.
+
+O projeto também documentou explicitamente um limite \textbf{intrínseco} da leitura a
+partir de uma única imagem --- a ambiguidade de orientação de $180\degree$ causada pela
+simetria de cor do tabuleiro --- em vez de tratá-lo como um bug a esconder, reportando as
+duas FENs candidatas sempre que a leitura é totalmente automática.
+
+De forma mais ampla, o trabalho demonstra que combinar visão clássica e \textit{deep
+learning}, cada uma aplicada onde é mais forte, produz uma pipeline mais robusta e mais
+interpretável do que qualquer uma das duas abordagens isoladamente: a geometria clássica
+permanece transparente e auditável, enquanto a rede neural resolve apenas o
+sub-problema --- reconhecimento fino de forma sob baixo contraste --- para o qual
+descritores clássicos não bastaram.

@@ -1,0 +1,37 @@
+\section{Dataset}
+\label{sec:dataset}
+
+O projeto utiliza o dataset público \textbf{Synthetic Chess Board Images}
+\cite{dataset-chess}, disponível no Kaggle sob licença CC0 (domínio público). Suas
+características principais:
+
+\begin{itemize}[nosep]
+  \item \textbf{Volume:} aproximadamente 1\,900 imagens de tabuleiros fotografados em
+        ângulo (não \textit{top-down}), resolução $1280 \times 1280$ pixels, formato
+        JPEG.
+  \item \textbf{Material:} tabuleiro e peças de madeira (\textit{boxwood} para peças
+        claras, \textit{ebony} para escuras), o que produz baixo contraste entre peça e
+        fundo em diversas condições de iluminação.
+  \item \textbf{Anotações:} um arquivo JSON por imagem contendo (a) a configuração da
+        posição --- \texttt{config} --- mapeando cada casa ocupada ao tipo e cor da
+        peça, e (b) os quatro cantos do tabuleiro --- \texttt{corners} --- normalizados
+        no intervalo $[0,1]$ (multiplicados pelas dimensões da imagem para obter
+        coordenadas em pixels).
+  \item \textbf{Superfícies, iluminação e ângulos de câmera variados} entre as imagens,
+        o que exige que a detecção de cantos e a classificação de ocupação/cor
+        generalizem além de um único cenário fixo.
+\end{itemize}
+
+O dataset não contém sequências de jogo contínuas --- cada imagem é uma posição
+independente, gerada separadamente. Isso é relevante para a Seção~\ref{sec:fen-jogadas}:
+a validação do detector de jogadas é feita com posições controladas (montadas
+manualmente) e não com transições reais capturadas entre dois instantes do mesmo
+tabuleiro.
+
+\subsection{Download e uso}
+
+O dataset é obtido programaticamente via \texttt{kagglehub} e fica em cache local em
+\texttt{\textasciitilde/.cache/kagglehub/}; o projeto não versiona os dados brutos. O
+bootstrap de ambiente (local ou Google Colab) e o download automático estão
+implementados em \texttt{src/setup.py} do repositório do projeto (ver
+Seção~\ref{sec:links}).

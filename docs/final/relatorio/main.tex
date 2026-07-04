@@ -1,0 +1,85 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{gensymb}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!40!black]{hyperref}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{referencias.bib}
+\usepackage{pdfpages}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  backgroundcolor=\color{black!5},
+  frame=single,
+  framesep=3pt,
+  xleftmargin=3pt,
+  xrightmargin=3pt,
+}
+
+\newcommand{\todolink}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\title{
+  \Large Análise de Tabuleiros de Xadrez\\
+  \large Visão Computacional Clássica e Transfer Learning para Leitura Completa de Partidas\\[0.5em]
+  \normalsize Relatório Final --- INE410121 / TRV410001 --- Visão Computacional --- UFSC
+}
+\author{Davi Ludvig \and Julia Macedo}
+\date{Julho de 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este relatório descreve uma pipeline de visão computacional para leitura automática de
+tabuleiros de xadrez fotografados em perspectiva, combinando técnicas clássicas de
+processamento de imagens (suavização, detecção de bordas, Transformada de Hough,
+homografia, votação de características) com \textit{deep learning} (\textit{transfer
+learning} e \textit{fine-tuning} de uma ResNet-34) para a etapa de classificação do tipo
+de peça. A solução cobre o problema de ponta a ponta: da imagem bruta até a
+reconstrução da posição em notação FEN e a inferência de jogadas (incluindo capturas,
+roque, \textit{en passant} e promoção). São reportadas métricas quantitativas para cada
+etapa --- detecção de ocupação, classificação de cor, classificação de tipo de peça e
+leitura de ponta a ponta --- avaliadas sobre o dataset \textit{Synthetic Chess Board
+Images} (Kaggle). O gargalo identificado é a detecção automática dos cantos do
+tabuleiro; isolando esse erro, o F1 de ocupação sobe de 62,7\% para 86,3\%, enquanto o
+classificador de tipo de peça atinge F1 de 91\%.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\input{sections/01_introducao}
+\input{sections/02_dataset}
+\input{sections/03_metodologia}
+\input{sections/04_deep_learning}
+\input{sections/05_fen_jogadas}
+\input{sections/06_resultados}
+\input{sections/07_limitacoes}
+\input{sections/08_conclusao}
+\input{sections/09_links}
+
+\printbibliography
+
+\clearpage
+\section*{Anexo: Poster do Trabalho (A1)}
+\label{sec:poster}
+\addcontentsline{toc}{section}{Anexo: Poster do Trabalho (A1)}
+\includepdf[pages=-]{../poster.pdf}
+
+\end{document}

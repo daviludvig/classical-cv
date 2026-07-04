@@ -1,0 +1,87 @@
+\section{Classificação do Tipo de Peça: \textit{Transfer Learning} com ResNet-34}
+\label{sec:deep-learning}
+
+\subsection{Motivação}
+
+Abordagens clássicas de reconhecimento de forma (\textit{template matching},
+momentos de Hu, contornos, HOG) foram descartadas para esta etapa após avaliação
+preliminar, por três razões: (i) baixo contraste peça-tabuleiro, ambos em madeira; (ii)
+deformação de perspectiva da silhueta das peças, que varia com o ângulo de câmera; (iii)
+silhuetas intrinsecamente parecidas entre classes (peão $\times$ bispo, torre $\times$
+dama em determinados ângulos). Optou-se por \textit{transfer learning} com uma rede
+convolucional pré-treinada, mantendo clássico tudo o que vem antes (Seção
+\ref{sec:metodologia}).
+
+\subsection{Arquitetura}
+
+A \textbf{ResNet-34} \cite{resnet}, pré-treinada no ImageNet \cite{imagenet}, tem sua
+camada final substituída por uma camada linear de 12 saídas (uma por classe de
+peça$\times$cor): \texttt{pawn\_w}, \texttt{pawn\_b}, \texttt{rook\_w},
+\texttt{rook\_b}, \texttt{knight\_w}, \texttt{knight\_b}, \texttt{bishop\_w},
+\texttt{bishop\_b}, \texttt{queen\_w}, \texttt{queen\_b}, \texttt{king\_w},
+\texttt{king\_b}. A escolha da ResNet-34 (34 camadas convolucionais, cerca de 21
+milhões de parâmetros) equilibra capacidade de representação e risco de
+\textit{overfitting} dado o volume de dados de treino disponível (\textasciitilde62\,000
+células).
+
+\subsection{Construção do dataset de treinamento}
+
+Para cada imagem do dataset original, o tabuleiro é retificado usando os cantos do
+gabarito, a orientação é determinada automaticamente por densidade de bordas, e cada
+casa ocupada é recortada e salva em \texttt{outputs/piece\_cells/\{classe\}/}, rotulada
+pelo tipo e cor da peça segundo o gabarito. O volume resultante é de
+aproximadamente $1\,944$ imagens $\times$ \textasciitilde32 peças $\approx$
+\textbf{62\,000} recortes de $64\times64$ pixels (redimensionados para $224\times224$ no
+\textit{dataloader}), com classes aproximadamente balanceadas (peões ligeiramente mais
+frequentes, cerca de 3$\times$ mais que reis/rainhas). O conjunto é dividido em 80\% de
+treino e 20\% de validação, estratificado por classe.
+
+\subsection{Treinamento em duas fases}
+
+\subsubsection{Fase 1 --- \textit{Transfer learning} (cabeça congelada)}
+
+O corpo da rede (\texttt{backbone}) é congelado e apenas a nova camada classificadora é
+treinada, por 10 épocas, com otimizador Adam ($\text{lr}=10^{-3}$), \textit{cross-entropy}
+e \textit{scheduler} \texttt{CosineAnnealingLR}. Essa fase é segura por construção: como
+o restante da rede está congelado, não há risco de destruir as características herdadas
+do ImageNet enquanto a cabeça, ainda aleatória, se ajusta.
+
+\subsubsection{Fase 2 --- \textit{Fine-tuning} (rede inteira)}
+
+Toda a rede é descongelada e re-treinada por 15 épocas com taxas de aprendizado
+discriminativas por grupo de camadas --- menores nas camadas iniciais, que já contêm
+características genéricas úteis (bordas, texturas), e maiores nas camadas finais e na
+cabeça:
+
+\begin{table}[H]
+\centering
+\caption{Hiperparâmetros da Fase 2 (\textit{fine-tuning}).}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Hiperparâmetro & Valor / justificativa \\
+\midrule
+LR base (cabeça / \texttt{layer4}) & $3\times10^{-5}$ --- muito menor que a Fase 1, preserva features ImageNet \\
+Decaimento por camada & $\times 0{,}3$ por bloco anterior --- camadas iniciais precisam de ajuste mínimo \\
+Otimizador & AdamW, \texttt{weight\_decay}=$10^{-4}$ (regularização) \\
+\textit{Label smoothing} & 0,1 --- ajuda classes raras (rei, dama) \\
+\textit{Warmup} & 2 épocas lineares --- evita destruir features no início do \textit{fine-tuning} \\
+\textit{Gradient clipping} & norma máxima 1,0 --- estabiliza treino com LR discriminativo \\
+Precisão mista (AMP) & \texttt{GradScaler} --- acelera treino em GPU \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+O aumento de dados (\textit{data augmentation}) aplicado a cada época inclui
+espelhamento horizontal e vertical, rotação aleatória de até $15\degree$ e variação de
+brilho/contraste/saturação, seguido de redimensionamento para $224\times224$ e
+normalização no padrão ImageNet. O treinamento é feito em GPU (CUDA), em lotes de 64
+imagens.
+
+\subsection{Impacto do \textit{fine-tuning}}
+
+O ganho da Fase 2 é substancial e concentrado nas classes raras: com apenas 1 época de
+\textit{fine-tuning}, o F1 global era de 53,2\%; após as 15 épocas completas com as
+práticas acima, o F1 sobe para \textbf{91,0\%}. O impacto é mais visível nas classes
+menos frequentes: \texttt{king\_b} sai de 14,2\% para 84,5\% de acurácia, e
+\texttt{queen\_w} de 27,7\% para 90,8\%. Os resultados quantitativos completos, por
+classe, estão na Seção~\ref{sec:resultados}.

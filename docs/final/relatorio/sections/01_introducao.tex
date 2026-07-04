@@ -1,0 +1,63 @@
+\section{Introdução}
+
+\subsection{Motivação e contexto}
+
+A digitalização automática de partidas de xadrez a partir de imagens tem aplicações
+práticas relevantes: transmissão de torneios (conversão de uma partida física em
+notação digital, em tempo real, sem sensores no tabuleiro), alimentação de
+\textit{engines} de análise a partir da posição capturada por câmera, acessibilidade
+(descrição automática de uma partida para pessoas com deficiência visual), e como
+estudo de caso para o ensino de Visão Computacional --- o tabuleiro combina geometria
+regular e previsível com uma quantidade significativa de variabilidade visual (ângulo de
+câmera, iluminação, material das peças).
+
+Este projeto foi desenvolvido para a disciplina INE410121 / TRV410001 --- Visão
+Computacional (UFSC) e tem como objetivo construir, do zero, uma pipeline completa de
+leitura de tabuleiro: da fotografia bruta em perspectiva até a notação FEN da posição e
+a identificação da jogada realizada entre dois estados consecutivos do tabuleiro.
+
+\subsection{Por que uma abordagem híbrida (clássica + \textit{deep learning})}
+
+A disciplina é centrada em técnicas clássicas de processamento de imagens --- domínio do
+valor (histogramas, limiarização), domínio do espaço (operadores de borda, suavização,
+morfologia), geometria projetiva (Hough, homografia) --- e a maior parte da pipeline
+deste trabalho é resolvida com essas ferramentas. A exceção deliberada é a
+\textbf{classificação do tipo de peça} (peão, torre, cavalo, bispo, dama, rei), etapa em
+que abordagens clássicas (\textit{template matching}, momentos de Hu, HOG) mostraram-se
+insuficientes: as doze classes de peça, fotografadas em ângulo e talhadas no mesmo
+material do tabuleiro, produzem silhuetas ambíguas demais para descritores clássicos de
+forma. Nessa única etapa, o projeto recorre a \textit{transfer learning} com uma
+ResNet-34 pré-treinada, mantendo clássica toda a geometria (detecção de bordas, linhas,
+homografia, segmentação) e a decisão de ocupação/cor.
+
+Essa escolha não é apenas prática --- ela também é didaticamente interessante: o
+resultado final expõe, lado a lado, onde a visão clássica é suficiente (leitura
+geométrica do tabuleiro) e onde ela deixa de ser competitiva (reconhecimento de forma
+fina sob baixo contraste), permitindo comparar diretamente o custo/benefício das duas
+famílias de técnicas sobre o mesmo problema.
+
+\subsection{Objetivos}
+
+\begin{enumerate}[nosep]
+  \item Detectar automaticamente o tabuleiro em uma foto em perspectiva e corrigir a
+        distorção via homografia, obtendo uma vista de cima (\textit{top-down}).
+  \item Segmentar o tabuleiro retificado em 64 casas e determinar, para cada uma, se
+        está ocupada e, em caso positivo, a cor da peça.
+  \item Classificar o tipo de cada peça ocupante via \textit{transfer learning}.
+  \item Reconstruir a posição completa em notação FEN (todos os seis campos).
+  \item Comparar dois estados consecutivos do tabuleiro e inferir a jogada realizada,
+        incluindo casos especiais (captura, roque, \textit{en passant}, promoção).
+  \item Quantificar o desempenho de cada etapa isoladamente e da pipeline de ponta a
+        ponta, identificando o gargalo do sistema.
+\end{enumerate}
+
+\subsection{Organização do documento}
+
+A Seção~\ref{sec:dataset} descreve o dataset utilizado. A
+Seção~\ref{sec:metodologia} detalha a pipeline clássica (pré-processamento, bordas,
+Hough, homografia, segmentação, ocupação e cor). A Seção~\ref{sec:deep-learning} cobre o
+classificador de tipo de peça baseado em ResNet-34. A Seção~\ref{sec:fen-jogadas}
+descreve a reconstrução de FEN e a detecção/notação de jogadas. A
+Seção~\ref{sec:resultados} apresenta os resultados quantitativos de cada etapa e da
+leitura de ponta a ponta. A Seção~\ref{sec:limitacoes} discute limitações conhecidas e
+trabalhos futuros, seguida da conclusão e dos links de referência do projeto.
