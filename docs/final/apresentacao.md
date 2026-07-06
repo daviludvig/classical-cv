@@ -535,9 +535,8 @@ Visão clássica (geometria, transparente) + Deep Learning (só onde o clássico
 
 - **Dataset:** [Synthetic Chess Board Images (Kaggle)](https://www.kaggle.com/datasets/thefamousrat/synthetic-chess-board-images)
 - **Código-fonte:** [github.com/daviludvig/classical-cv](https://github.com/daviludvig/classical-cv)
+- **Checkpoint do modelo (ResNet-34 treinada, .pth):** [GitHub Releases](https://github.com/daviludvig/classical-cv/releases/download/model-v1/piece_classifier_resnet34.pth)
 
-<div class="todo">TODO: link do checkpoint do modelo (ResNet-34 treinada, .pth)</div>
-<div class="todo">TODO: link desta apresentação no Google Slides</div>
 <div class="todo">TODO: link do vídeo no YouTube</div>
 <div class="todo">TODO: poster (PDF) do trabalho</div>
 

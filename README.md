@@ -86,7 +86,7 @@ The dataset (~457 MB) is downloaded automatically on first run via `kagglehub`.
 
 The trained ResNet-34 weights are not versioned in this repository (binary, ~85 MB).
 
-> **Download link:** _to be defined — see [issue #1](https://github.com/daviludvig/classical-cv/issues/1)_
+> **Download link:** [piece_classifier_resnet34.pth](https://github.com/daviludvig/classical-cv/releases/download/model-v1/piece_classifier_resnet34.pth) (GitHub Releases)
 
 Place the downloaded file at `models/piece_classifier_resnet34.pth` before running the inference cells.  
 To retrain from scratch, delete the file and run the training cell in the notebook.

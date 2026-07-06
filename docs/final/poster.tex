@@ -61,7 +61,9 @@
 \makeatother
 
 \author{Davi Ludvig \quad$\vert$\quad Julia Macedo}
-\institute{INE410121 / TRV410001 --- Visão Computacional --- UFSC}
+\institute{INE410121 / TRV410001 $\cdot$ Visão Computacional $\cdot$ UFSC}
+
+\tikzposterlatexaffectionproofoff
 
 \begin{document}
 
@@ -74,14 +76,14 @@
 
 \block{Introdução e Objetivo}{
 \textbf{Problema:} dada uma foto de um tabuleiro de xadrez em perspectiva,
-reconstruir o estado completo do jogo --- ocupação, cor e tipo de cada peça ---
-e produzir a notação \textbf{FEN} e a \textbf{jogada} entre dois estados.
+reconstruir o estado completo do jogo (ocupação, cor e tipo de cada peça) e
+produzir a notação \textbf{FEN} e a \textbf{jogada} entre dois estados.
 
 \vspace{0.5em}
-\textbf{Abordagem híbrida:} geometria e decisão via \textbf{visão clássica}
-(disciplina); \textbf{Deep Learning} apenas na classificação de tipo de peça,
+\textbf{Abordagem híbrida:} geometria e decisão via \textbf{visão clássica};
+\textbf{Deep Learning} apenas na classificação de tipo de peça,
 onde descritores clássicos de forma (template matching, momentos de Hu, HOG)
-não bastaram --- peças e tabuleiro no mesmo material, silhuetas ambíguas em
+não bastaram: peças e tabuleiro no mesmo material geram silhuetas ambíguas em
 perspectiva.
 }
 
@@ -89,7 +91,7 @@ perspectiva.
 \textit{Synthetic Chess Board Images} (Kaggle, CC0):
 \begin{itemize}
   \item \textasciitilde1\,900 imagens $1280{\times}1280$, tabuleiro em ângulo
-  \item Tabuleiro e peças de \textbf{madeira} --- baixo contraste
+  \item Tabuleiro e peças de \textbf{madeira}, com baixo contraste entre eles
   \item Anotações: posição das peças + cantos do tabuleiro (GT)
 \end{itemize}
 
@@ -122,20 +124,20 @@ centro-borda. Cor: limiar do canal V (HSV).
 % =========================================================== COLUMN 2 ======
 \column{0.5}
 
-\block{Classificação de Tipo --- ResNet-34}{
+\block{Classificação de Tipo (ResNet-34)}{
 \textbf{Transfer learning} em 2 fases a partir de pesos ImageNet:
 \begin{enumerate}
-  \item \textit{Transfer learning} (10 épocas) --- \textit{backbone} congelado,
+  \item \textit{Transfer learning} (10 épocas): \textit{backbone} congelado,
         treina só a cabeça (12 classes)
-  \item \textit{Fine-tuning} (15 épocas) --- rede inteira, LR discriminativo
-        (menor nas camadas iniciais), \textit{label smoothing}, \textit{warmup}
+  \item \textit{Fine-tuning} (15 épocas): treina a rede inteira, ideal para
+        aprender os detalhes finos que distinguem cada peça
 \end{enumerate}
 Treinado sobre \textasciitilde62\,000 células rotuladas automaticamente a
 partir do gabarito, com \textit{augmentation} (flips, rotação $\leq$15\degree,
 jitter de cor).
 
 \begin{center}
-\colorbox{mdSecondary}{\color{white}\bfseries\Large\strut~~F1 = 91\% --- tipo de peça~~}
+\colorbox{mdSecondary}{\color{white}\bfseries\Large\strut~~F1 = 91\% em tipo de peça~~}
 \end{center}
 
 \begin{center}
@@ -144,13 +146,11 @@ jitter de cor).
 }
 
 \block{FEN e Detecção de Jogadas}{
-A posição é serializada em FEN \textbf{completa} (6 campos), com estimativa de
-direitos de roque pela posição de reis/torres. Leitura sem GT fixa o
-\textbf{eixo} do tabuleiro (0\% erro), mas a simetria de cor sob
-$180\degree$ deixa \textasciitilde42\% das leituras invertidas --- reportamos
-\textbf{as duas FENs candidatas}. Um algoritmo determinístico infere lances em
-notação UCI a partir da comparação entre dois estados: captura, roque,
-\textit{en passant}, promoção.
+A posição é serializada em FEN \textbf{completa} (6 campos). Leitura sem GT
+fixa o \textbf{eixo} do tabuleiro (0\% erro), mas a simetria de cor sob
+$180\degree$ deixa \textasciitilde42\% das leituras invertidas. Um algoritmo
+determinístico infere lances em notação UCI a partir da comparação entre dois
+estados: captura, roque, \textit{en passant}, promoção.
 }
 
 \block{Resultados}{
@@ -163,14 +163,14 @@ notação UCI a partir da comparação entre dois estados: captura, roque,
 Ocupação (ponta a ponta) & F1 = 62,7\% (86,3\% c/ cantos GT) \\
 Cor da peça (HSV) & 82,5\% \\
 \textbf{Tipo da peça (ResNet-34)} & \textbf{F1 = 91,0\%} \\
-Orientação (sem GT) & 0\% erro de eixo; \textasciitilde42\% flip 180\degree \\
+Orientação (sem gabarito) & Lado do tabuleiro sempre correto; \textasciitilde42\% saem de cabeça para baixo \\
 \bottomrule
 \end{tabular}
 \end{center}
 \vspace{0.4em}
-Gargalo de ponta a ponta: detecção automática dos \textbf{4 cantos} do
-tabuleiro sob baixo contraste --- não a votação de ocupação nem o
-classificador de tipo, que hoje é a etapa mais precisa do sistema.
+O gargalo de ponta a ponta é a detecção automática dos \textbf{4 cantos} do
+tabuleiro sob baixo contraste; a votação de ocupação e o classificador de
+tipo, que hoje é a etapa mais precisa do sistema, não são o problema.
 }
 
 \block{Referências}{
@@ -182,11 +182,9 @@ Canny (1986) \textit{A Computational Approach to Edge Detection}, IEEE PAMI.
 Duda \& Hart (1972) \textit{Use of the Hough Transformation...}, CACM.
 }
 
-\block{Conclusão e Trabalhos Futuros}{
-Visão clássica (geometria, transparente) + Deep Learning (só onde o clássico
-falha) cobrem o problema de ponta a ponta, da foto à jogada em notação.
-Próximos passos: detecção de cantos mais robusta, validação em jogo real,
-sequências reais de jogo, distribuição dos pesos treinados.
+\block{Conclusão}{
+Visão clássica + Deep Learning (só onde o clássico falha) cobrem o problema de
+ponta a ponta, da foto à jogada em notação.
 }
 
 \end{columns}
