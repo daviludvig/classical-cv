@@ -1,0 +1,73 @@
+\section{Declaração de Uso de Inteligência Artificial Generativa}
+\label{sec:declaracao-ia}
+
+Em conformidade com as diretrizes da disciplina para a entrega do trabalho final,
+declaramos o uso pontual de Inteligência Artificial Generativa (ferramenta:
+\textbf{Claude AI}, Anthropic) como suporte durante o desenvolvimento do código.
+Abaixo detalhamos as áreas específicas onde a ferramenta foi utilizada, os prompts
+empregados e a explicação do funcionamento do código gerado, demonstrando compreensão
+da lógica integrada ao projeto --- e não o uso de uma "caixa preta".
+
+\subsection{Cálculo de métricas (F1-score, precisão e recall)}
+\label{sec:declaracao-ia-metricas}
+
+\textbf{Arquivo afetado:} \texttt{scripts/eval\_metrics.py}
+
+\begin{quote}
+\itshape
+``Como posso implementar uma função em Python usando NumPy para calcular a Matriz de
+Confusão (Verdadeiros Positivos, Falsos Positivos e Falsos Negativos), a Precisão, o
+Recall e o F1-Score comparando dois arrays booleanos 8x8 (um com a predição de
+ocupação do tabuleiro e outro com o ground truth)? Preciso que o código evite o erro
+de `divisão por zero'.''
+\end{quote}
+
+\textbf{Explicação do código gerado:} o trecho gerado e adaptado por nós calcula o
+F1-score da detecção de ocupação do tabuleiro:
+\begin{enumerate}[nosep]
+  \item \textbf{Verdadeiros Positivos (TP):} comparação elemento a elemento entre a
+        matriz de predição e a matriz de \textit{ground truth} (GT), \texttt{(pred == 1)
+        \& (gt == 1)} --- casas de fato ocupadas que o modelo acertou.
+  \item \textbf{Falsos Positivos (FP):} \texttt{(pred == 1) \& (gt == 0)} --- casas que o
+        modelo marcou como ocupadas, mas o GT indicava vazias.
+  \item \textbf{Falsos Negativos (FN):} \texttt{(pred == 0) \& (gt == 1)} --- peças que o
+        modelo não detectou.
+  \item \textbf{Fórmulas:} Precisão $= TP / (TP + FP)$; Recall $= TP / (TP + FN)$;
+        F1 $= 2 \cdot (\text{Precisão} \cdot \text{Recall}) / (\text{Precisão} +
+        \text{Recall})$. O código inclui um termo mínimo ($\epsilon = 10^{-9}$) somado
+        ao denominador --- necessário para evitar divisão por zero no caso extremo de um
+        tabuleiro inteiro ser lido como vazio, o que zeraria o denominador da precisão.
+\end{enumerate}
+
+\subsection{Visualização de resultados (bounding boxes com Matplotlib)}
+\label{sec:declaracao-ia-viz}
+
+\textbf{Arquivo afetado:} notebooks de visualização e geração de figuras do relatório.
+
+\begin{quote}
+\itshape
+``Escreva um trecho de código usando Matplotlib que pegue uma imagem de um tabuleiro
+de xadrez 480x480 retificado, faça um loop para dividi-lo em um grid de 8x8 (60x60
+pixels por casa) e desenhe `bounding boxes' verdes nas casas onde o modelo acertou e
+vermelhas nas casas onde o modelo errou. Como desenho esses retângulos vazados em cima
+da imagem original?''
+\end{quote}
+
+\textbf{Explicação do código gerado:} usamos a IA para acelerar a geração de código
+\textit{boilerplate} de plotagem (não de processamento de imagem), usado exclusivamente
+para gerar as figuras do relatório:
+\begin{enumerate}[nosep]
+  \item Inicialização de figura e eixo (\texttt{fig, ax = plt.subplots()}), com a imagem
+        de fundo (tabuleiro retificado) exibida via \texttt{ax.imshow()}.
+  \item Loop duplo aninhado (\texttt{for i in range(8)}, \texttt{for j in range(8)})
+        percorrendo o grid 8$\times$8.
+  \item Coordenada do canto superior esquerdo de cada casa obtida multiplicando os
+        índices pelo tamanho em pixels (\texttt{x = j * 60}, \texttt{y = i * 60}).
+  \item Cada casa é desenhada com um objeto
+        \texttt{matplotlib.patches.Rectangle}, recebendo posição, largura, altura, cor
+        da borda e \texttt{facecolor='none'}. É esse último parâmetro que garante que a
+        caixa fique vazada, sem cobrir a peça na imagem.
+  \item A cor é definida dinamicamente a partir da nossa matriz de comparação
+        predição~$\times$~\textit{ground truth}: verde em caso de acerto, vermelho em
+        caso de erro. Cada retângulo é adicionado à figura com \texttt{ax.add\_patch()}.
+\end{enumerate}
